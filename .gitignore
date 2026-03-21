@@ -1,7 +1,35 @@
+# Dependencies
 node_modules/
+
+# Build output
 out/
 dist/
+
+# Editor & IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Claude Code
 .superpowers/
 .claude/
 .playwright-mcp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Native module build artifacts
+build/
+prebuilds/
