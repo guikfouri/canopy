@@ -12,14 +12,13 @@ interface SidebarProps {
 
 export function Sidebar({ width }: SidebarProps) {
   const addProject = useWorktreeStore((s) => s.addProject)
-  const saveConfig = useWorktreeStore((s) => s.saveConfig)
   const [addHovered, setAddHovered] = useState(false)
 
   const handleAddProject = async () => {
     const path = await window.electronAPI?.canopy?.openDirectoryDialog()
     if (path) {
-      addProject(path)
-      saveConfig()
+      const branch = await window.electronAPI?.canopy?.getBranch(path).catch(() => 'main') ?? 'main'
+      addProject(path, branch)
     }
   }
 

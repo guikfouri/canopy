@@ -18,6 +18,7 @@ export const IPC = {
   CONFIG_SAVE: 'config:save',
 
   // Git
+  GIT_GET_BRANCH: 'git:get-branch',
   GIT_LIST_BRANCHES: 'git:list-branches',
   GIT_CHECKOUT: 'git:checkout',
   GIT_STATUS: 'git:status',

@@ -28,6 +28,7 @@ declare global {
         readFile: (filePath: string) => Promise<string | null>
         writeFile: (filePath: string, content: string) => Promise<boolean>
         openDirectoryDialog: () => Promise<string | null>
+        getBranch: (worktreePath: string) => Promise<string>
         listBranches: (repoPath: string) => Promise<{ name: string; current: boolean }[]>
         checkoutBranch: (worktreePath: string, branch: string) => Promise<void>
         gitStatus: (worktreePath: string) => Promise<{ path: string; status: string; staged: boolean }[]>

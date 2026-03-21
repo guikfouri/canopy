@@ -173,42 +173,6 @@ export function FileEditorPane({ filePath, onDirtyChange, isFocused, onFocus }: 
     }
   }, [isFocused])
 
-  if (loading) {
-    return (
-      <div style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: COLORS.surfaceDim,
-        color: COLORS.textMuted,
-        fontSize: '12px',
-        fontFamily: "'Inter', sans-serif",
-      }}>
-        Loading...
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: COLORS.surfaceDim,
-        color: COLORS.error,
-        fontSize: '12px',
-        fontFamily: "'Inter', sans-serif",
-      }}>
-        {error}
-      </div>
-    )
-  }
-
   return (
     <div
       onClick={onFocus}
@@ -235,6 +199,21 @@ export function FileEditorPane({ filePath, onDirtyChange, isFocused, onFocus }: 
           background: COLORS.surfaceDim,
         }}
       />
+      {(loading || error) && (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: COLORS.surfaceDim,
+          color: error ? COLORS.error : COLORS.textMuted,
+          fontSize: '12px',
+          fontFamily: "'Inter', sans-serif",
+        }}>
+          {error ?? 'Loading...'}
+        </div>
+      )}
     </div>
   )
 }

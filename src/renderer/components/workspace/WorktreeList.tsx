@@ -10,7 +10,6 @@ export function WorktreeList() {
   const setActive = useWorktreeStore((s) => s.setActive)
   const addWorktree = useWorktreeStore((s) => s.addWorktree)
   const removeWorktree = useWorktreeStore((s) => s.removeWorktree)
-  const saveConfig = useWorktreeStore((s) => s.saveConfig)
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<Worktree | null>(null)
@@ -67,7 +66,6 @@ export function WorktreeList() {
         name: safeName,
       })
       addWorktree(project.id, name.trim(), info.path, branchName, false)
-      saveConfig()
     } catch (err) {
       console.error('Failed to create worktree:', err)
     }
@@ -80,7 +78,6 @@ export function WorktreeList() {
         deleteBranch ? worktree.branch : undefined,
       )
       removeWorktree(worktree.id)
-      saveConfig()
     } catch (err) {
       console.error('Failed to remove worktree:', err)
     }

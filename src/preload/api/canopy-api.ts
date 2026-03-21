@@ -30,6 +30,9 @@ export const canopyApi = {
   openDirectoryDialog: (): Promise<string | null> =>
     ipcRenderer.invoke(IPC.DIALOG_OPEN_DIRECTORY),
 
+  getBranch: (worktreePath: string): Promise<string> =>
+    ipcRenderer.invoke(IPC.GIT_GET_BRANCH, worktreePath),
+
   listBranches: (repoPath: string): Promise<{ name: string; current: boolean }[]> =>
     ipcRenderer.invoke(IPC.GIT_LIST_BRANCHES, repoPath),
 

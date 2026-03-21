@@ -76,6 +76,10 @@ export function registerIpcHandlers(): void {
   })
 
   // ── Git ─────────────────────────────────────
+  ipcMain.handle(IPC.GIT_GET_BRANCH, async (_event, worktreePath: string) => {
+    return worktreeManager.getBranch(worktreePath)
+  })
+
   ipcMain.handle(IPC.GIT_LIST_BRANCHES, async (_event, repoPath: string) => {
     return worktreeManager.listBranches(repoPath)
   })

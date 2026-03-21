@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
 import type { Project, Worktree, SplitNode, CanopyConfig } from '@shared/types'
 import { createTabGroup } from '../lib/split-tree'
@@ -12,7 +13,7 @@ interface WorktreeStore {
   loaded: boolean
 
   loadFromConfig: (config: CanopyConfig) => void
-  addProject: (path: string) => Project
+  addProject: (path: string, branch?: string) => Project
   removeProject: (id: string) => void
   addWorktree: (projectId: string, name: string, worktreePath: string, branch: string, isMain: boolean) => Worktree
   removeWorktree: (id: string) => void
@@ -26,7 +27,10 @@ interface WorktreeStore {
   saveConfig: () => void
 }
 
-export const useWorktreeStore = create<WorktreeStore>((set, get) => ({
+// Flag to suppress auto-save during initial config load
+let _isLoadingConfig = false
+
+export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((set, get) => ({
   projects: [],
   worktrees: [],
   activeWorktreeId: null,
@@ -34,6 +38,7 @@ export const useWorktreeStore = create<WorktreeStore>((set, get) => ({
   loaded: false,
 
   loadFromConfig: (config: CanopyConfig) => {
+    _isLoadingConfig = true
     set({
       projects: config.projects || [],
       worktrees: config.worktrees || [],
@@ -41,9 +46,10 @@ export const useWorktreeStore = create<WorktreeStore>((set, get) => ({
       sidebarWidth: config.sidebarWidth,
       loaded: true,
     })
+    _isLoadingConfig = false
   },
 
-  addProject: (path: string) => {
+  addProject: (path: string, branch: string = 'main') => {
     const state = get()
     const colorIndex = state.projects.length % PROJECT_COLORS.length
     const name = path.split('/').pop() || 'project'
@@ -59,9 +65,9 @@ export const useWorktreeStore = create<WorktreeStore>((set, get) => ({
     const worktree: Worktree = {
       id: uuid(),
       projectId: project.id,
-      name: 'main',
+      name: branch,
       worktreePath: path,
-      branch: 'main',
+      branch,
       color: PROJECT_COLORS[colorIndex],
       isMain: true,
       splitLayout: createTabGroup(),
@@ -172,4 +178,21 @@ export const useWorktreeStore = create<WorktreeStore>((set, get) => ({
     const config = get().toConfig()
     window.electronAPI?.canopy?.saveConfig(config)
   },
-}))
+})))
+
+// ── Auto-save with debounce ──────────────────────────
+// Persists config to disk 1.5s after any state change,
+// skipping the initial loadFromConfig hydration.
+let _saveTimer: ReturnType<typeof setTimeout> | null = null
+
+useWorktreeStore.subscribe(
+  (s) => ({ projects: s.projects, worktrees: s.worktrees, activeWorktreeId: s.activeWorktreeId, sidebarWidth: s.sidebarWidth }),
+  () => {
+    if (_isLoadingConfig) return
+    if (_saveTimer) clearTimeout(_saveTimer)
+    _saveTimer = setTimeout(() => {
+      useWorktreeStore.getState().saveConfig()
+    }, 1500)
+  },
+  { equalityFn: (a, b) => a === b },
+)

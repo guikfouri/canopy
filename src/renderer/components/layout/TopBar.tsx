@@ -106,7 +106,6 @@ function BranchSelector({ worktree }: { worktree: import('@shared/types').Worktr
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const updateBranch = useWorktreeStore((s) => s.updateWorktreeBranch)
-  const saveConfig = useWorktreeStore((s) => s.saveConfig)
   const containerRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -142,12 +141,11 @@ function BranchSelector({ worktree }: { worktree: import('@shared/types').Worktr
     try {
       await window.electronAPI.canopy.checkoutBranch(worktree.worktreePath, branch)
       updateBranch(worktree.id, branch)
-      saveConfig()
     } catch (err) {
       console.error('Failed to checkout branch:', err)
     }
     handleClose()
-  }, [worktree, updateBranch, saveConfig, handleClose])
+  }, [worktree, updateBranch, handleClose])
 
   // Close on outside click
   useEffect(() => {
