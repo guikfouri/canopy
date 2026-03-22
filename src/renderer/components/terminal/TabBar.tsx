@@ -11,6 +11,7 @@ interface TabBarProps {
   onSelectTab: (tabId: string) => void
   onCloseTab: (tabId: string) => void
   onAddTerminal: () => void
+  onAddFile: () => void
   onRenameTab: (tabId: string, title: string) => void
   onReorderTabs: (tabs: Tab[]) => void
   onDropTabFromGroup?: (sourceGroupId: string, tabId: string, insertIndex: number) => void
@@ -23,6 +24,7 @@ export function TabBar({
   onSelectTab,
   onCloseTab,
   onAddTerminal,
+  onAddFile,
   onRenameTab,
   onReorderTabs,
   onDropTabFromGroup,
@@ -141,7 +143,7 @@ export function TabBar({
         </div>
 
         {/* Add tab button */}
-        <AddTabButton onClick={onAddTerminal} />
+        <AddTabButton onAddTerminal={onAddTerminal} onAddFile={onAddFile} />
       </div>
 
       {/* Context menu */}
@@ -320,36 +322,81 @@ function TabItem({
 
 // ── Add Tab Button ──────────────────────────────
 
-function AddTabButton({ onClick }: { onClick: () => void }) {
+function AddTabButton({ onAddTerminal, onAddFile }: { onAddTerminal: () => void; onAddFile: () => void }) {
   const [hovered, setHovered] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
 
   return (
-    <button
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        onClick={() => setShowMenu(!showMenu)}
+        title="New Tab"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '28px',
+          height: '24px',
+          margin: '0 4px',
+          background: hovered ? COLORS.surfaceContainerHigh : 'transparent',
+          border: 'none',
+          borderRadius: '4px',
+          color: hovered ? COLORS.primary : COLORS.textMuted,
+          cursor: 'pointer',
+          flexShrink: 0,
+          transition: 'all 150ms',
+        }}
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <line x1="6" y1="2" x2="6" y2="10" />
+          <line x1="2" y1="6" x2="10" y2="6" />
+        </svg>
+      </button>
+      {showMenu && (
+        <>
+          <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 999 }} />
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            right: 0,
+            zIndex: 1000,
+            background: COLORS.surfaceContainerHigh,
+            borderRadius: '6px',
+            border: `1px solid ${COLORS.outlineVariant}40`,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            padding: '4px 0',
+            minWidth: '140px',
+          }}>
+            <AddTabMenuItem label="Terminal" onClick={() => { onAddTerminal(); setShowMenu(false) }} />
+            <AddTabMenuItem label="New File" onClick={() => { onAddFile(); setShowMenu(false) }} />
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function AddTabMenuItem({ label, onClick }: { label: string; onClick: () => void }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <div
       onClick={onClick}
-      title="New Terminal"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '28px',
-        height: '24px',
-        margin: '0 4px',
-        background: hovered ? COLORS.surfaceContainerHigh : 'transparent',
-        border: 'none',
-        borderRadius: '4px',
-        color: hovered ? COLORS.primary : COLORS.textMuted,
+        padding: '6px 12px',
         cursor: 'pointer',
-        flexShrink: 0,
-        transition: 'all 150ms',
+        background: hovered ? COLORS.surfaceContainerHighest : 'transparent',
+        color: COLORS.onSurface,
+        fontSize: '12px',
+        fontFamily: "'Inter', sans-serif",
+        transition: 'background 100ms',
       }}
     >
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <line x1="6" y1="2" x2="6" y2="10" />
-        <line x1="2" y1="6" x2="10" y2="6" />
-      </svg>
-    </button>
+      {label}
+    </div>
   )
 }
 
