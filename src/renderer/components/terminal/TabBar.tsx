@@ -393,7 +393,7 @@ function ContextMenuOverlay({
         background: COLORS.surfaceContainerHigh,
         borderRadius: '6px',
         border: `1px solid ${COLORS.outlineVariantMedium}`,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+        boxShadow: '0 4px 16px var(--shadow-color)',
         padding: '4px 0',
         minWidth: '140px',
       }}>

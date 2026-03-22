@@ -64,7 +64,7 @@ export function CreateWorktreeDialog({ isOpen, onClose }: CreateWorktreeDialogPr
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(12, 12, 31, 0.7)',
+        background: COLORS.scrim,
         backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
         display: 'flex',

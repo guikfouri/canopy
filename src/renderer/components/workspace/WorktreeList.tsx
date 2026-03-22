@@ -485,7 +485,7 @@ function DeleteDialog({ worktree, onConfirm, onCancel }: {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.5)',
+        background: COLORS.scrim,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -501,7 +501,7 @@ function DeleteDialog({ worktree, onConfirm, onCancel }: {
           padding: '20px 24px',
           maxWidth: '340px',
           width: '100%',
-          boxShadow: '0 16px 48px rgba(0,0,0,0.4)',
+          boxShadow: '0 16px 48px var(--shadow-color)',
           animation: 'slideDown 200ms ease-out',
         }}
       >

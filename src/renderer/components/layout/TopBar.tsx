@@ -199,7 +199,7 @@ function BranchSelector({ worktree }: { worktree: import('@shared/types').Worktr
           background: COLORS.surfaceContainer,
           border: `1px solid ${COLORS.outlineVariantLight}`,
           borderRadius: '8px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+          boxShadow: '0 8px 32px var(--shadow-color-strong)',
           zIndex: 1000,
           overflow: 'hidden',
           animation: 'fadeIn 150ms ease-out',

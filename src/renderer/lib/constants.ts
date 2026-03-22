@@ -60,6 +60,9 @@ export const COLORS = {
   successGlow: 'var(--success-glow)',
   successGlowStrong: 'var(--success-glow-strong)',
   secondaryGlow: 'var(--secondary-glow)',
+  scrim: 'var(--scrim)',
+  shadowColor: 'var(--shadow-color)',
+  shadowColorStrong: 'var(--shadow-color-strong)',
 } as const
 
 export const PROJECT_COLORS = [
