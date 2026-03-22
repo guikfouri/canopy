@@ -137,7 +137,6 @@ export function registerIpcHandlers(): void {
     try {
       const entries = fs.readdirSync(dirPath, { withFileTypes: true })
       return entries
-        .filter(e => !e.name.startsWith('.'))
         .sort((a, b) => {
           // Directories first, then alphabetical
           if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1
