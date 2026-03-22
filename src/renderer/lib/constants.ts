@@ -53,6 +53,13 @@ export const COLORS = {
   primaryContainerOutline: 'var(--primary-container-outline)',
   primaryContainerSubtle: 'var(--primary-container-subtle)',
   outlineVariantSubtle: 'var(--outline-variant-subtle)',
+  outlineVariantFaint: 'var(--outline-variant-faint)',
+  outlineVariantLight: 'var(--outline-variant-light)',
+  outlineVariantMedium: 'var(--outline-variant-medium)',
+  outlineVariantStrong: 'var(--outline-variant-strong)',
+  successGlow: 'var(--success-glow)',
+  successGlowStrong: 'var(--success-glow-strong)',
+  secondaryGlow: 'var(--secondary-glow)',
 } as const
 
 export const PROJECT_COLORS = [
