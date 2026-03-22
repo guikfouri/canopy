@@ -72,16 +72,18 @@ export function WorktreeList() {
   }
 
   const handleDeleteWorktree = async (worktree: Worktree, deleteBranch: boolean) => {
+    // Always remove from UI — git cleanup failure shouldn't block the user
+    removeWorktree(worktree.id)
+    setDeleteTarget(null)
+
     try {
       await window.electronAPI.canopy.removeWorktree(
         worktree.worktreePath,
         deleteBranch ? worktree.branch : undefined,
       )
-      removeWorktree(worktree.id)
     } catch (err) {
-      console.error('Failed to remove worktree:', err)
+      console.error('Failed to remove worktree from disk:', err)
     }
-    setDeleteTarget(null)
   }
 
   return (
@@ -328,8 +330,11 @@ function WorktreeItem({ worktree, isActive, index, onSelect, onDelete }: {
       : 'transparent'
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect() }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -444,7 +449,7 @@ function WorktreeItem({ worktree, isActive, index, onSelect, onDelete }: {
           ⌘{index + 1}
         </span>
       )}
-    </button>
+    </div>
   )
 }
 
