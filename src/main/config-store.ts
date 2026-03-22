@@ -8,6 +8,7 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
 
 const DEFAULT_CONFIG: CanopyConfig = {
   version: 1,
+  theme: 'system',
   projects: [],
   worktrees: [],
   activeWorktreeId: null,

@@ -61,6 +61,7 @@ export interface Worktree {
 // ── Persisted Config ───────────────────────────────
 export interface CanopyConfig {
   version: 1
+  theme: ThemePreference
   projects: Project[]
   worktrees: Worktree[]
   activeWorktreeId: string | null
@@ -90,6 +91,9 @@ export interface TodoItem {
   text: string
   completed: boolean
 }
+
+// ── Theme ──────────────────────────────────────
+export type ThemePreference = 'system' | 'dark' | 'light'
 
 // ── IPC Payloads ───────────────────────────────────
 export interface CreateTerminalPayload {

@@ -1,7 +1,23 @@
 @import "tailwindcss";
 
-/* ── Kinetic Console: CSS Custom Properties ─────────────── */
+/* ── Canopy: CSS Custom Properties ─────────────────────── */
+
+/* Non-color tokens (shared across themes) */
 :root {
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Menlo', monospace;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+
+  --transition-fast: 150ms ease-out;
+  --transition-normal: 200ms ease-out;
+  --transition-slow: 300ms ease-out;
+}
+
+/* ── Dark Theme (Kinetic Console) ───────────────────────── */
+[data-theme="dark"] {
   --surface: #111125;
   --surface-dim: #0c0c1f;
   --surface-container-lowest: #0c0c1f;
@@ -14,27 +30,108 @@
   --primary: #ffd79b;
   --primary-container: #ffb300;
   --primary-fixed: #ffdeac;
+  --primary-fixed-dim: #ffba38;
   --on-primary: #432c00;
 
+  --secondary: #ffb77a;
+  --secondary-container: #ff8f00;
+
   --tertiary: #dcdaff;
+  --tertiary-container: #bbbcff;
+
   --error: #ffb4ab;
+  --error-container: #93000a;
   --success: #4ADE80;
 
   --on-surface: #e2e0fc;
   --on-surface-variant: #d6c4ac;
+  --text-secondary: #9e8e78;
+  --text-muted: #6b6460;
+
   --outline: #9e8e78;
   --outline-variant: #514532;
+  --surface-variant: #333348;
+  --gutter: #1a1a2e;
 
-  --font-display: 'Space Grotesk', sans-serif;
-  --font-body: 'Inter', -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Menlo', monospace;
+  --primary-container-glow: rgba(255, 179, 0, 0.38);
+  --primary-container-outline: rgba(255, 179, 0, 0.19);
+  --primary-container-subtle: rgba(255, 179, 0, 0.08);
+  --outline-variant-subtle: rgba(81, 69, 50, 0.13);
+  --glass-bg: rgba(51, 51, 72, 0.8);
+  --selection-bg: rgba(255, 179, 0, 0.25);
 
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
+  /* Border alpha variants */
+  --outline-variant-faint: rgba(81, 69, 50, 0.08);
+  --outline-variant-light: rgba(81, 69, 50, 0.19);
+  --outline-variant-medium: rgba(81, 69, 50, 0.25);
+  --outline-variant-strong: rgba(81, 69, 50, 0.38);
+  /* Semantic glow variants */
+  --success-glow: rgba(74, 222, 128, 0.31);
+  --success-glow-strong: rgba(74, 222, 128, 0.50);
+  --secondary-glow: rgba(255, 183, 122, 0.13);
+  /* Scrim and shadow */
+  --scrim: rgba(12, 12, 31, 0.7);
+  --shadow-color: rgba(0, 0, 0, 0.4);
+  --shadow-color-strong: rgba(0, 0, 0, 0.5);
+}
 
-  --transition-fast: 150ms ease-out;
-  --transition-normal: 200ms ease-out;
-  --transition-slow: 300ms ease-out;
+/* ── Light Theme (Warm Cream + Amber) ───────────────────── */
+[data-theme="light"] {
+  --surface: #faf7f2;
+  --surface-dim: #f0ece5;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f5f1ea;
+  --surface-container: #e8e2d9;
+  --surface-container-high: #ddd7ce;
+  --surface-container-highest: #d2ccc3;
+  --surface-bright: #ffffff;
+
+  --primary: #9a6e00;
+  --primary-container: #e09500;
+  --primary-fixed: #7a5700;
+  --primary-fixed-dim: #b38200;
+  --on-primary: #ffffff;
+
+  --secondary: #a85e00;
+  --secondary-container: #ff9e2c;
+
+  --tertiary: #4a4580;
+  --tertiary-container: #6b65a0;
+
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+  --success: #1b7a3d;
+
+  --on-surface: #1a1a2e;
+  --on-surface-variant: #4a3f2e;
+  --text-secondary: #6b5d4f;
+  --text-muted: #8a8078;
+
+  --outline: #b5a898;
+  --outline-variant: #d4c9bc;
+  --surface-variant: #e8e2d9;
+  --gutter: #e0dbd4;
+
+  --primary-container-glow: rgba(224, 149, 0, 0.35);
+  --primary-container-outline: rgba(224, 149, 0, 0.25);
+  --primary-container-subtle: rgba(224, 149, 0, 0.10);
+  --outline-variant-subtle: rgba(212, 201, 188, 0.5);
+  --glass-bg: rgba(232, 226, 217, 0.85);
+  --selection-bg: rgba(224, 149, 0, 0.2);
+
+  /* Border alpha variants */
+  --outline-variant-faint: rgba(212, 201, 188, 0.3);
+  --outline-variant-light: rgba(212, 201, 188, 0.55);
+  --outline-variant-medium: rgba(212, 201, 188, 0.7);
+  --outline-variant-strong: rgba(212, 201, 188, 0.85);
+  /* Semantic glow variants */
+  --success-glow: rgba(27, 122, 61, 0.25);
+  --success-glow-strong: rgba(27, 122, 61, 0.40);
+  --secondary-glow: rgba(168, 94, 0, 0.10);
+  /* Scrim and shadow */
+  --scrim: rgba(0, 0, 0, 0.35);
+  --shadow-color: rgba(0, 0, 0, 0.12);
+  --shadow-color-strong: rgba(0, 0, 0, 0.2);
 }
 
 /* ── Reset ──────────────────────────────────────────────── */
@@ -156,7 +253,7 @@ body {
 
 /* ── Glass Effect ───────────────────────────────────────── */
 .glass {
-  background: rgba(51, 51, 72, 0.8);
+  background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -185,6 +282,6 @@ body {
 
 /* ── Selection ──────────────────────────────────────────── */
 ::selection {
-  background: rgba(255, 179, 0, 0.25);
+  background: var(--selection-bg);
   color: var(--on-surface);
 }

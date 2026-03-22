@@ -108,7 +108,7 @@ export function ChecksPanel() {
       </div>
 
       {/* Divider */}
-      <div style={{ height: '1px', background: `${COLORS.outlineVariant}30` }} />
+      <div style={{ height: '1px', background: COLORS.outlineVariantLight }} />
 
       {/* Todos section */}
       <div>
@@ -288,7 +288,7 @@ function AddButton({ onClick }: { onClick: () => void }) {
 const inputStyle: React.CSSProperties = {
   width: '100%',
   background: COLORS.surfaceContainerHigh,
-  border: `1px solid ${COLORS.outlineVariant}40`,
+  border: `1px solid ${COLORS.outlineVariantMedium}`,
   borderRadius: '4px',
   padding: '6px 8px',
   fontFamily: "'Inter', sans-serif",

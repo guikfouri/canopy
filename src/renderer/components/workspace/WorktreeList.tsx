@@ -296,7 +296,7 @@ function NewWorktreeInput({ onSubmit, onCancel }: {
         style={{
           flex: 1,
           background: COLORS.surfaceContainerLowest,
-          border: `1px solid ${COLORS.outlineVariant}60`,
+          border: `1px solid ${COLORS.outlineVariantStrong}`,
           borderRadius: '4px',
           color: COLORS.onSurface,
           fontSize: '12px',
@@ -306,7 +306,7 @@ function NewWorktreeInput({ onSubmit, onCancel }: {
           minWidth: 0,
         }}
         onFocus={(e) => { e.currentTarget.style.borderColor = COLORS.primaryContainer }}
-        onBlurCapture={(e) => { e.currentTarget.style.borderColor = `${COLORS.outlineVariant}60` }}
+        onBlurCapture={(e) => { e.currentTarget.style.borderColor = COLORS.outlineVariantStrong }}
       />
     </div>
   )
@@ -359,7 +359,7 @@ function WorktreeItem({ worktree, isActive, index, onSelect, onDelete }: {
           height: '14px',
           borderRadius: '1px',
           background: COLORS.primaryContainer,
-          boxShadow: `0 0 6px ${COLORS.primaryContainer}50`,
+          boxShadow: `0 0 6px ${COLORS.primaryContainerGlow}`,
         }} />
       )}
 
@@ -370,8 +370,8 @@ function WorktreeItem({ worktree, isActive, index, onSelect, onDelete }: {
         borderRadius: '50%',
         background: isActive ? COLORS.success : COLORS.secondary,
         boxShadow: isActive
-          ? `0 0 8px ${COLORS.success}50, 0 0 2px ${COLORS.success}80`
-          : `0 0 4px ${COLORS.secondary}20`,
+          ? `0 0 8px ${COLORS.successGlow}, 0 0 2px ${COLORS.successGlowStrong}`
+          : `0 0 4px ${COLORS.secondaryGlow}`,
         flexShrink: 0,
         transition: 'box-shadow 200ms ease-out',
       }} />
@@ -485,7 +485,7 @@ function DeleteDialog({ worktree, onConfirm, onCancel }: {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.5)',
+        background: COLORS.scrim,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -501,7 +501,7 @@ function DeleteDialog({ worktree, onConfirm, onCancel }: {
           padding: '20px 24px',
           maxWidth: '340px',
           width: '100%',
-          boxShadow: '0 16px 48px rgba(0,0,0,0.4)',
+          boxShadow: '0 16px 48px var(--shadow-color)',
           animation: 'slideDown 200ms ease-out',
         }}
       >

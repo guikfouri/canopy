@@ -56,7 +56,7 @@ export function ChangesPanel() {
       case 'untracked': return COLORS.success
       case 'modified': return COLORS.primary
       case 'deleted': return COLORS.error
-      case 'renamed': return '#22D3EE'
+      case 'renamed': return COLORS.tertiary
       default: return COLORS.textSecondary
     }
   }
@@ -112,8 +112,8 @@ export function ChangesPanel() {
             borderRadius: '6px',
             padding: '4px',
             minWidth: '180px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-            border: `1px solid ${COLORS.outlineVariant}30`,
+            boxShadow: '0 4px 16px var(--shadow-color)',
+            border: `1px solid ${COLORS.outlineVariantLight}`,
             animation: 'fadeIn 100ms ease-out',
           }}>
             <DropdownItem

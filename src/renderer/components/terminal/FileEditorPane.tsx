@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import * as monaco from 'monaco-editor'
-import { COLORS } from '../../lib/constants'
+import { COLORS, MONACO_DARK_COLORS, MONACO_LIGHT_COLORS, MONACO_DARK_RULES, MONACO_LIGHT_RULES } from '../../lib/constants'
+import { useThemeStore } from '../../lib/theme'
 
 // Configure Monaco workers for Electron
 self.MonacoEnvironment = {
@@ -14,35 +15,24 @@ self.MonacoEnvironment = {
   },
 }
 
-// Define Kinetic Console theme for Monaco
-monaco.editor.defineTheme('kinetic-console', {
+// Define Kinetic Console themes for Monaco
+monaco.editor.defineTheme('kinetic-dark', {
   base: 'vs-dark',
   inherit: true,
-  rules: [
-    { token: 'comment', foreground: '6b6460', fontStyle: 'italic' },
-    { token: 'keyword', foreground: 'ffba38' },
-    { token: 'string', foreground: '4ADE80' },
-    { token: 'number', foreground: 'ffb77a' },
-    { token: 'type', foreground: 'bbbcff' },
-    { token: 'function', foreground: 'ffd79b' },
-    { token: 'variable', foreground: 'e2e0fc' },
-  ],
-  colors: {
-    'editor.background': COLORS.surfaceDim,
-    'editor.foreground': COLORS.onSurface,
-    'editor.lineHighlightBackground': '#1a1a2e',
-    'editor.selectionBackground': '#ffb30040',
-    'editorCursor.foreground': COLORS.primaryContainer,
-    'editorLineNumber.foreground': COLORS.textMuted,
-    'editorLineNumber.activeForeground': COLORS.textSecondary,
-    'editor.inactiveSelectionBackground': '#ffb30020',
-    'editorIndentGuide.background': '#28283d',
-    'editorIndentGuide.activeBackground': '#333348',
-    'scrollbarSlider.background': '#33334840',
-    'scrollbarSlider.hoverBackground': '#33334880',
-    'scrollbarSlider.activeBackground': '#333348',
-  },
+  rules: [...MONACO_DARK_RULES],
+  colors: { ...MONACO_DARK_COLORS },
 })
+
+monaco.editor.defineTheme('kinetic-light', {
+  base: 'vs',
+  inherit: true,
+  rules: [...MONACO_LIGHT_RULES],
+  colors: { ...MONACO_LIGHT_COLORS },
+})
+
+function getMonacoThemeName(resolved: 'dark' | 'light') {
+  return resolved === 'dark' ? 'kinetic-dark' : 'kinetic-light'
+}
 
 interface FileEditorPaneProps {
   filePath: string
@@ -119,7 +109,7 @@ export function FileEditorPane({ filePath, onDirtyChange, isFocused, onFocus }: 
     const editor = monaco.editor.create(containerRef.current, {
       value: '',
       language: getLanguageFromPath(filePath),
-      theme: 'kinetic-console',
+      theme: getMonacoThemeName(useThemeStore.getState().resolved),
       fontFamily: "'JetBrains Mono', 'Menlo', monospace",
       fontSize: 13,
       lineHeight: 20,
@@ -173,6 +163,16 @@ export function FileEditorPane({ filePath, onDirtyChange, isFocused, onFocus }: 
     }
   }, [isFocused])
 
+  useEffect(() => {
+    const unsub = useThemeStore.subscribe(
+      (s) => s.resolved,
+      (resolved) => {
+        monaco.editor.setTheme(getMonacoThemeName(resolved))
+      },
+    )
+    return unsub
+  }, [])
+
   return (
     <div
       onClick={onFocus}
@@ -183,10 +183,10 @@ export function FileEditorPane({ filePath, onDirtyChange, isFocused, onFocus }: 
         borderRadius: '3px',
         overflow: 'hidden',
         outline: isFocused
-          ? `1px solid ${COLORS.primaryContainer}30`
+          ? `1px solid ${COLORS.primaryContainerOutline}`
           : '1px solid transparent',
         boxShadow: isFocused
-          ? `inset 0 0 0 1px ${COLORS.primaryContainer}15`
+          ? `inset 0 0 0 1px ${COLORS.primaryContainerSubtle}`
           : 'none',
         transition: 'outline-color 200ms ease-out, box-shadow 200ms ease-out',
       }}
