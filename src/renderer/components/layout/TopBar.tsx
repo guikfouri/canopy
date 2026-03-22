@@ -20,7 +20,7 @@ export function TopBar() {
       height: '38px',
       minHeight: '38px',
       background: COLORS.surfaceContainerLow,
-      borderBottom: `1px solid ${COLORS.outlineVariant}15`,
+      borderBottom: `1px solid ${COLORS.outlineVariantFaint}`,
       padding: '0 16px 0 80px',
       gap: '6px',
       ...DRAG,
@@ -86,7 +86,7 @@ function TopBarEmpty() {
       height: '38px',
       minHeight: '38px',
       background: COLORS.surfaceContainerLow,
-      borderBottom: `1px solid ${COLORS.outlineVariant}15`,
+      borderBottom: `1px solid ${COLORS.outlineVariantFaint}`,
       padding: '0 16px 0 80px',
       ...DRAG,
     }} />
@@ -197,7 +197,7 @@ function BranchSelector({ worktree }: { worktree: import('@shared/types').Worktr
           right: 0,
           width: '300px',
           background: COLORS.surfaceContainer,
-          border: `1px solid ${COLORS.outlineVariant}30`,
+          border: `1px solid ${COLORS.outlineVariantLight}`,
           borderRadius: '8px',
           boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
           zIndex: 1000,
@@ -208,7 +208,7 @@ function BranchSelector({ worktree }: { worktree: import('@shared/types').Worktr
           {/* Search */}
           <div style={{
             padding: '8px',
-            borderBottom: `1px solid ${COLORS.outlineVariant}20`,
+            borderBottom: `1px solid ${COLORS.outlineVariantSubtle}`,
           }}>
             <div style={{
               display: 'flex',
@@ -308,7 +308,7 @@ function BranchButton({ branch, onClick, active }: {
           : hovered
             ? COLORS.surfaceContainerHigh
             : COLORS.surfaceContainer,
-        border: `1px solid ${COLORS.outlineVariant}${active ? '40' : '25'}`,
+        border: `1px solid ${active ? COLORS.outlineVariantMedium : COLORS.outlineVariantLight}`,
         borderRadius: '6px',
         color: COLORS.onSurface,
         cursor: 'pointer',

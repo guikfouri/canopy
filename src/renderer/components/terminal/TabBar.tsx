@@ -102,7 +102,7 @@ export function TabBar({
           alignItems: 'center',
           height: '32px',
           background: COLORS.surfaceContainerLow,
-          borderBottom: `1px solid ${COLORS.outlineVariant}20`,
+          borderBottom: `1px solid ${COLORS.outlineVariantSubtle}`,
           overflow: 'hidden',
           ...NO_DRAG,
         }}
@@ -392,7 +392,7 @@ function ContextMenuOverlay({
         zIndex: 1000,
         background: COLORS.surfaceContainerHigh,
         borderRadius: '6px',
-        border: `1px solid ${COLORS.outlineVariant}40`,
+        border: `1px solid ${COLORS.outlineVariantMedium}`,
         boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
         padding: '4px 0',
         minWidth: '140px',

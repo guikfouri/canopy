@@ -56,7 +56,7 @@ function FileExplorerPanel({ width }: { width: number }) {
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
-      borderLeft: `1px solid ${COLORS.outlineVariant}20`,
+      borderLeft: `1px solid ${COLORS.outlineVariantSubtle}`,
     }}>
       {/* Tab bar */}
       <div style={{
@@ -65,7 +65,7 @@ function FileExplorerPanel({ width }: { width: number }) {
         marginTop: '28px',
         padding: '0 8px',
         gap: '0',
-        borderBottom: `1px solid ${COLORS.outlineVariant}20`,
+        borderBottom: `1px solid ${COLORS.outlineVariantSubtle}`,
       }}>
         <PanelTab
           label="All files"

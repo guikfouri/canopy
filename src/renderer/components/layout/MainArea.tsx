@@ -46,7 +46,7 @@ export function MainArea({ onToggleFileExplorer, fileExplorerOpen }: MainAreaPro
             margin: '0 auto 20px',
             borderRadius: '6px',
             background: COLORS.surfaceContainerLow,
-            border: `1px solid ${COLORS.outlineVariant}30`,
+            border: `1px solid ${COLORS.outlineVariantLight}`,
             display: 'flex',
             alignItems: 'flex-end',
             justifyContent: 'flex-start',
@@ -153,7 +153,7 @@ const kbdStyle: React.CSSProperties = {
   color: COLORS.textSecondary,
   background: COLORS.surfaceContainerLow,
   borderRadius: '3px',
-  border: `1px solid ${COLORS.outlineVariant}40`,
+  border: `1px solid ${COLORS.outlineVariantMedium}`,
 }
 
 function TerminalTabBar({ worktree, focusedTerminalId, onToggleFileExplorer, fileExplorerOpen }: {
