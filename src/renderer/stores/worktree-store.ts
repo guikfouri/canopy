@@ -166,6 +166,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
     const state = get()
     return {
       version: 1 as const,
+      theme: 'system' as const,
       projects: state.projects,
       worktrees: state.worktrees,
       activeWorktreeId: state.activeWorktreeId,

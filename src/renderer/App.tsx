@@ -26,6 +26,7 @@ export default function App() {
     } else {
       loadFromConfig({
         version: 1,
+        theme: 'system',
         projects: [],
         worktrees: [],
         activeWorktreeId: null,

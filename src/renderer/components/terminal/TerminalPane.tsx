@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
-import { XTERM_THEME, COLORS } from '../../lib/constants'
+import { XTERM_DARK_THEME, COLORS } from '../../lib/constants'
 import { useTerminalStore } from '../../stores/terminal-store'
 import '@xterm/xterm/css/xterm.css'
 
@@ -55,7 +55,7 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
     createdRef.current = true
 
     const terminal = new Terminal({
-      theme: XTERM_THEME,
+      theme: XTERM_DARK_THEME,
       fontFamily: "'JetBrains Mono', 'Menlo', monospace",
       fontSize: 13,
       lineHeight: 1.25,
