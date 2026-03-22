@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid'
 import type { Project, Worktree, SplitNode, CanopyConfig } from '@shared/types'
 import { createTabGroup } from '../lib/split-tree'
 import { PROJECT_COLORS } from '../lib/constants'
+import { useThemeStore } from '../lib/theme'
 
 interface WorktreeStore {
   projects: Project[]
@@ -39,6 +40,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
 
   loadFromConfig: (config: CanopyConfig) => {
     _isLoadingConfig = true
+    useThemeStore.getState().init(config.theme ?? 'system')
     set({
       projects: config.projects || [],
       worktrees: config.worktrees || [],
@@ -166,7 +168,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
     const state = get()
     return {
       version: 1 as const,
-      theme: 'system' as const,
+      theme: useThemeStore.getState().preference,
       projects: state.projects,
       worktrees: state.worktrees,
       activeWorktreeId: state.activeWorktreeId,
@@ -196,4 +198,16 @@ useWorktreeStore.subscribe(
     }, 1500)
   },
   { equalityFn: (a, b) => a === b },
+)
+
+// Auto-save when theme preference changes
+useThemeStore.subscribe(
+  (s) => s.preference,
+  () => {
+    if (_isLoadingConfig) return
+    if (_saveTimer) clearTimeout(_saveTimer)
+    _saveTimer = setTimeout(() => {
+      useWorktreeStore.getState().saveConfig()
+    }, 1500)
+  },
 )
