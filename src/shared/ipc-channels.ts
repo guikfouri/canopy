@@ -7,6 +7,7 @@ export const IPC = {
   TERMINAL_RESIZE: 'terminal:resize',
   TERMINAL_OUTPUT: 'terminal:output',
   TERMINAL_EXIT: 'terminal:exit',
+  TERMINAL_COMMAND_STATE: 'terminal:command-state',
 
   // Worktree
   WORKTREE_CREATE: 'worktree:create',

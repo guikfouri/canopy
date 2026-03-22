@@ -27,6 +27,13 @@ function wireTerminalCallbacks(id: string): void {
       win.webContents.send(IPC.TERMINAL_EXIT, { id, code })
     }
   })
+
+  terminalManager.onCommandState(id, (state) => {
+    const win = getMainWindow()
+    if (win && !win.isDestroyed()) {
+      win.webContents.send(IPC.TERMINAL_COMMAND_STATE, { id, state })
+    }
+  })
 }
 
 export function registerIpcHandlers(): void {
