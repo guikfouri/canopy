@@ -13,6 +13,7 @@ const DEFAULT_CONFIG: CanopyConfig = {
   activeWorktreeId: null,
   sidebarWidth: 220,
   fileExplorerWidth: 280,
+  terminalScrollback: 10_000,
 }
 
 export function loadConfig(): CanopyConfig {

@@ -31,6 +31,7 @@ export default function App() {
         activeWorktreeId: null,
         sidebarWidth: 220,
         fileExplorerWidth: 280,
+        terminalScrollback: 10_000,
       })
     }
   }, [loadFromConfig])
