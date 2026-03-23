@@ -56,4 +56,7 @@ export const canopyApi = {
 
   saveFileDialog: (defaultPath?: string): Promise<string | null> =>
     ipcRenderer.invoke(IPC.DIALOG_SAVE_FILE, defaultPath),
+
+  openExternal: (url: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.SHELL_OPEN_EXTERNAL, url),
 }

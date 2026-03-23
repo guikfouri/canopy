@@ -50,7 +50,6 @@ export default function App() {
     if (!window.electronAPI?.terminal?.onCommandState) return
 
     const unsub = window.electronAPI.terminal.onCommandState(({ id, state, exitCode }) => {
-      console.log('[canopy-notif] command state:', state, 'exit:', exitCode, 'id:', id.slice(0, 8))
       useTerminalStore.getState().setCommandState(id, state, exitCode)
 
       if (state === 'done') {
@@ -61,16 +60,8 @@ export default function App() {
           findTabGroupContaining(w.splitLayout, id) !== undefined,
         )
 
-        console.log('[canopy-notif] done check:', {
-          ownerWorktreeId: ownerWorktree?.id.slice(0, 8),
-          activeWorktreeId: activeWorktreeId?.slice(0, 8),
-          isBackground: ownerWorktree != null && ownerWorktree.id !== activeWorktreeId,
-          soundEnabled: notification.soundEnabled,
-        })
-
         // Play sound if terminal belongs to a non-active worktree
         if (ownerWorktree && ownerWorktree.id !== activeWorktreeId) {
-          console.warn('[canopy-notif] ▶ BACKGROUND DONE! sound:', notification.soundType, 'enabled:', notification.soundEnabled, 'vol:', notification.volume)
           if (notification.soundEnabled) {
             playNotificationSound(notification.soundType, notification.volume)
           }

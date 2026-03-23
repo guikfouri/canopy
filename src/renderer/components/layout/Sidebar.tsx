@@ -23,26 +23,15 @@ export function Sidebar({ width, onOpenSettings }: SidebarProps) {
 
   const handleAddProject = async () => {
     try {
-      console.log('[Canopy] Opening directory dialog...')
       const path = await window.electronAPI?.canopy?.openDirectoryDialog()
-      console.log('[Canopy] Dialog returned path:', path)
       if (!path) return
 
       // Prevent duplicate projects with the same path
-      if (projects.some((p) => p.path === path)) {
-        console.warn('[Canopy] Project already exists at', path)
-        return
-      }
+      if (projects.some((p) => p.path === path)) return
 
-      console.log('[Canopy] Getting branch for', path)
-      const branch = await window.electronAPI?.canopy?.getBranch(path).catch((err: unknown) => {
-        console.warn('[Canopy] getBranch failed, defaulting to main:', err)
-        return 'main'
-      }) ?? 'main'
-      console.log('[Canopy] Branch:', branch)
+      const branch = await window.electronAPI?.canopy?.getBranch(path).catch(() => 'main') ?? 'main'
 
       addProject(path, branch)
-      console.log('[Canopy] Project added successfully')
     } catch (err) {
       console.error('[Canopy] Failed to add project:', err)
     }
