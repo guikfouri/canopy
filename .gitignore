@@ -30,6 +30,9 @@ npm-debug.log*
 .env.local
 .env.*.local
 
+# Shell integration artifacts
+src/main/shell-integration/zsh-bootstrap/.zsh_history
+
 # Native module build artifacts
 build/
 prebuilds/

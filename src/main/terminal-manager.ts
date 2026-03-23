@@ -1,6 +1,13 @@
 import { app } from 'electron'
 import path from 'path'
+import fs from 'fs'
 import type { CreateTerminalPayload, ResizeTerminalPayload, CommandState } from '../shared/types'
+
+// ── Diagnostic logging (prefix all with [canopy-term]) ──────────
+const DEBUG = !app.isPackaged
+function log(...args: unknown[]) {
+  if (DEBUG) console.log('[canopy-term]', ...args)
+}
 
 // Dynamic import for node-pty (native module, must be required at runtime)
 let pty: typeof import('@lydell/node-pty')
@@ -34,10 +41,18 @@ const COMMAND_STATE_DEBOUNCE_MS = 1500
 // Minimum output bytes before we consider the terminal "busy"
 const MIN_OUTPUT_FOR_BUSY = 200
 
+// Activity-based idle detection (runs alongside OSC 133)
+// Detects when interactive programs like Claude Code become idle
+const ACTIVITY_IDLE_TIMEOUT_MS = 4000  // 4s of silence after output = idle
+const MIN_OUTPUT_FOR_ACTIVITY = 100    // Minimum output bytes for idle → busy
+const ACTIVITY_REACTIVATION_MIN = 500  // Minimum output bytes for done → busy (higher to avoid cursor noise)
+const ACTIVITY_COOLDOWN_MS = 8000      // After activity-done, ignore small output for 8s
+
 // ── OSC 133 parsing ──────────────────────────────────────────────
 
-// Matches OSC 133 sequences: ESC ] 133 ; <command> [; <params>] BEL
-const OSC_133_RE = /\x1b\]133;([A-Z])(?:;([^\x07\x1b]*))?\x07/g
+// Matches OSC 133 sequences: ESC ] 133 ; <command> [; <params>] (BEL | ST)
+// BEL = \x07, ST = ESC \ (\x1b\x5c)
+const OSC_133_RE = /\x1b\]133;([A-Z])(?:;([^\x07\x1b]*))?\x07|\x1b\]133;([A-Z])(?:;([^\x07\x1b]*))?\x1b\\/g
 
 interface Osc133Event {
   command: 'A' | 'B' | 'C' | 'D'
@@ -49,10 +64,10 @@ function parseOsc133(data: string): Osc133Event[] {
   let match: RegExpExecArray | null
   OSC_133_RE.lastIndex = 0
   while ((match = OSC_133_RE.exec(data)) !== null) {
-    events.push({
-      command: match[1] as Osc133Event['command'],
-      params: match[2],
-    })
+    // BEL variant: groups 1,2 — ST variant: groups 3,4
+    const command = (match[1] || match[3]) as Osc133Event['command']
+    const params = match[2] || match[4]
+    events.push({ command, params })
   }
   return events
 }
@@ -63,7 +78,16 @@ function getShellIntegrationDir(): string {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, 'shell-integration')
   }
-  return path.join(__dirname, '..', '..', 'src', 'main', 'shell-integration')
+  // In dev, app.getAppPath() returns the project root reliably
+  const dir = path.join(app.getAppPath(), 'src', 'main', 'shell-integration')
+  if (!fs.existsSync(dir)) {
+    // Fallback: resolve from __dirname (out/main/) up to project root
+    const fallback = path.join(__dirname, '..', '..', 'src', 'main', 'shell-integration')
+    log('shell-integration dir (primary missing, using fallback):', fallback, '| exists:', fs.existsSync(fallback))
+    return fallback
+  }
+  log('shell-integration dir:', dir)
+  return dir
 }
 
 function getZshBootstrapDir(): string {
@@ -124,8 +148,12 @@ interface ManagedTerminal {
   outputSinceIdle: number
   lastOutputChunk: string
   commandStateTimer: ReturnType<typeof setTimeout> | null
+  activityTimer: ReturnType<typeof setTimeout> | null
+  activityBytes: number // Output bytes since last idle/done
+  lastActivityDoneAt: number // Timestamp of last activity-based done (for cooldown)
   hasOscSupport: boolean
   lastCommandExitCode: number | undefined
+  oscBuffer: string // Buffer for partial OSC sequences across chunks
 }
 
 const terminals = new Map<string, ManagedTerminal>()
@@ -180,6 +208,32 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
     }
   }
 
+  log('createTerminal:', {
+    id: payload.id,
+    shell,
+    shellType,
+    disableIntegration,
+    args,
+    ZDOTDIR: env.ZDOTDIR,
+    CANOPY_SHELL_INTEGRATION_DIR: env.CANOPY_SHELL_INTEGRATION_DIR,
+    CANOPY_ORIGINAL_ZDOTDIR: env.CANOPY_ORIGINAL_ZDOTDIR,
+  })
+
+  // Verify shell integration files exist
+  if (!disableIntegration) {
+    const integrationDir = getShellIntegrationDir()
+    const zshScript = path.join(integrationDir, 'canopy-integration.zsh')
+    const bootstrapDir = getZshBootstrapDir()
+    const bootstrapRc = path.join(bootstrapDir, '.zshrc')
+    const bootstrapEnv = path.join(bootstrapDir, '.zshenv')
+    log('file check:', {
+      zshScript: fs.existsSync(zshScript),
+      bootstrapDir: fs.existsSync(bootstrapDir),
+      bootstrapRc: fs.existsSync(bootstrapRc),
+      bootstrapEnv: fs.existsSync(bootstrapEnv),
+    })
+  }
+
   const ptyProcess = nodePty.spawn(shell, args, {
     name: 'xterm-256color',
     cols: payload.cols || 80,
@@ -207,30 +261,53 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
     outputSinceIdle: 0,
     lastOutputChunk: '',
     commandStateTimer: null,
+    activityTimer: null,
+    activityBytes: 0,
+    lastActivityDoneAt: 0,
     hasOscSupport: false,
     lastCommandExitCode: undefined,
+    oscBuffer: '',
   }
 
   function setCommandState(state: CommandState, exitCode?: number) {
     if (managed.commandState === state) return
+    log(`state: ${managed.commandState} → ${state}`, exitCode !== undefined ? `exit=${exitCode}` : '', `hasCallback=${!!managed.onCommandStateCallback}`, `[${payload.id.slice(0, 8)}]`)
     managed.commandState = state
     if (managed.onCommandStateCallback) {
       managed.onCommandStateCallback(state, exitCode)
+    } else {
+      log(`⚠ no callback for state change!`, `[${payload.id.slice(0, 8)}]`)
     }
   }
 
   // ── OSC 133 handler ──────────────────────────────────
   function handleOsc133Events(data: string): void {
-    const events = parseOsc133(data)
+    // Prepend any buffered partial OSC sequence from previous chunk
+    const combined = managed.oscBuffer + data
+    managed.oscBuffer = ''
+
+    // Check if data ends with a partial OSC 133 sequence (no BEL or ST terminator yet)
+    const lastEsc = combined.lastIndexOf('\x1b]133;')
+    if (lastEsc !== -1) {
+      const afterEsc = combined.substring(lastEsc)
+      if (!afterEsc.includes('\x07') && !afterEsc.includes('\x1b\\')) {
+        // Partial sequence — buffer it for next chunk
+        managed.oscBuffer = afterEsc
+      }
+    }
+
+    const events = parseOsc133(combined)
     if (events.length === 0) return
 
     if (!managed.hasOscSupport) {
+      log('✓ OSC 133 support detected!', `[${payload.id.slice(0, 8)}]`)
       managed.hasOscSupport = true
       if (managed.commandStateTimer) {
         clearTimeout(managed.commandStateTimer)
         managed.commandStateTimer = null
       }
     }
+    log('OSC events:', events.map(e => `${e.command}${e.params ? ';' + e.params : ''}`).join(', '), `[${payload.id.slice(0, 8)}]`)
 
     for (const event of events) {
       switch (event.command) {
@@ -244,6 +321,12 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
           managed.lastCommandExitCode = isNaN(exitCode as number) ? undefined : exitCode
           setCommandState('done', managed.lastCommandExitCode)
           managed.outputSinceIdle = 0
+          // Reset activity tracking to prevent double-notification
+          managed.activityBytes = 0
+          if (managed.activityTimer) {
+            clearTimeout(managed.activityTimer)
+            managed.activityTimer = null
+          }
           break
         }
         case 'A':
@@ -261,7 +344,7 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
     managed.lastOutputChunk = data
     managed.outputSinceIdle += data.length
 
-    if (managed.outputSinceIdle >= MIN_OUTPUT_FOR_BUSY && managed.commandState === 'idle') {
+    if (managed.outputSinceIdle >= MIN_OUTPUT_FOR_BUSY && (managed.commandState === 'idle' || managed.commandState === 'done')) {
       setCommandState('busy')
     }
 
@@ -274,7 +357,50 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
     }, COMMAND_STATE_DEBOUNCE_MS)
   }
 
+  // ── Activity-based idle detection ──────────────────
+  // Runs alongside OSC 133 to catch interactive programs (Claude Code, etc.)
+  // becoming idle. OSC 133 handles precise shell command boundaries;
+  // this catches "the terminal stopped producing output".
+  function handleActivityDetection(data: string): void {
+    managed.activityBytes += data.length
+
+    // Determine threshold based on current state
+    // After a recent done, require more output to re-enter busy (avoid oscillation from cursor noise)
+    const inCooldown = managed.lastActivityDoneAt > 0 &&
+      (Date.now() - managed.lastActivityDoneAt) < ACTIVITY_COOLDOWN_MS
+    const threshold = managed.commandState === 'done'
+      ? ACTIVITY_REACTIVATION_MIN
+      : MIN_OUTPUT_FOR_ACTIVITY
+
+    if (!inCooldown && managed.activityBytes >= threshold && managed.commandState !== 'busy') {
+      setCommandState('busy')
+    }
+
+    // Reset the idle timer on every chunk
+    if (managed.activityTimer) clearTimeout(managed.activityTimer)
+    managed.activityTimer = setTimeout(() => {
+      if (managed.commandState === 'busy') {
+        log(`activity timeout (${ACTIVITY_IDLE_TIMEOUT_MS}ms silence after ${managed.activityBytes}b)`, `[${payload.id.slice(0, 8)}]`)
+        setCommandState('done')
+        managed.activityBytes = 0
+        managed.lastActivityDoneAt = Date.now()
+      }
+    }, ACTIVITY_IDLE_TIMEOUT_MS)
+  }
+
+  let chunkCount = 0
   ptyProcess.onData((data) => {
+    // Diagnostic: log first 5 chunks as hex to verify OSC 133 arrives in Electron
+    if (chunkCount < 5) {
+      chunkCount++
+      const hasOsc = data.includes('\x1b]133;')
+      log(
+        `chunk #${chunkCount} (${data.length}b) osc133=${hasOsc}`,
+        hasOsc ? '' : `hex=${Buffer.from(data.slice(0, 100)).toString('hex')}`,
+        `[${payload.id.slice(0, 8)}]`,
+      )
+    }
+
     managed.scrollbackBuffer.push(data)
     managed.scrollbackSize += data.length
 
@@ -287,6 +413,8 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
     handleOsc133Events(data)
     // Fallback detection (only active when no OSC 133 support)
     handleFallbackDetection(data)
+    // Activity-based idle detection (always active, catches interactive programs)
+    handleActivityDetection(data)
 
     if (managed.onDataCallback) {
       managed.onDataCallback(data)
@@ -327,6 +455,9 @@ export function destroyTerminal(id: string): void {
   if (terminal) {
     if (terminal.commandStateTimer) {
       clearTimeout(terminal.commandStateTimer)
+    }
+    if (terminal.activityTimer) {
+      clearTimeout(terminal.activityTimer)
     }
     try {
       terminal.process.kill()
