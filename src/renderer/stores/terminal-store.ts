@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { v4 as uuid } from 'uuid'
-import type { TerminalSession } from '@shared/types'
+import type { TerminalSession, CommandState } from '@shared/types'
 
 interface TerminalStore {
   sessions: Map<string, TerminalSession>
@@ -10,6 +10,9 @@ interface TerminalStore {
   removeSession: (id: string) => void
   setFocused: (id: string | null) => void
   getSession: (id: string) => TerminalSession | undefined
+  setCommandState: (id: string, state: CommandState) => void
+  getWorktreeCommandState: (worktreeId: string) => CommandState
+  clearWorktreeDone: (worktreeId: string) => void
 }
 
 export const useTerminalStore = create<TerminalStore>((set, get) => ({
@@ -22,6 +25,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       id,
       worktreeId,
       status: 'idle',
+      commandState: 'idle',
       cols: 80,
       rows: 24,
       title: '',
@@ -47,4 +51,39 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   setFocused: (id: string | null) => set({ focusedTerminalId: id }),
 
   getSession: (id: string) => get().sessions.get(id),
+
+  setCommandState: (id: string, state: CommandState) => {
+    set((prev) => {
+      const session = prev.sessions.get(id)
+      if (!session || session.commandState === state) return prev
+      const sessions = new Map(prev.sessions)
+      sessions.set(id, { ...session, commandState: state })
+      return { sessions }
+    })
+  },
+
+  getWorktreeCommandState: (worktreeId: string) => {
+    const sessions = get().sessions
+    let hasBusy = false
+    for (const session of sessions.values()) {
+      if (session.worktreeId !== worktreeId) continue
+      if (session.commandState === 'done') return 'done'
+      if (session.commandState === 'busy') hasBusy = true
+    }
+    return hasBusy ? 'busy' : 'idle'
+  },
+
+  clearWorktreeDone: (worktreeId: string) => {
+    set((prev) => {
+      const sessions = new Map(prev.sessions)
+      let changed = false
+      for (const [id, session] of sessions) {
+        if (session.worktreeId === worktreeId && session.commandState === 'done') {
+          sessions.set(id, { ...session, commandState: 'idle' })
+          changed = true
+        }
+      }
+      return changed ? { sessions } : prev
+    })
+  },
 }))

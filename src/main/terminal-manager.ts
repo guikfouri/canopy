@@ -1,4 +1,4 @@
-import type { CreateTerminalPayload, ResizeTerminalPayload } from '../shared/types'
+import type { CreateTerminalPayload, ResizeTerminalPayload, CommandState } from '../shared/types'
 
 // Dynamic import for node-pty (native module, must be required at runtime)
 let pty: typeof import('@lydell/node-pty')
@@ -12,14 +12,37 @@ async function loadPty() {
 
 const MAX_SCROLLBACK_SIZE = 100_000 // ~100KB of terminal output
 
+// Strip ANSI escape codes for prompt pattern matching
+const ANSI_RE = /\x1b\[[0-9;]*[a-zA-Z]|\x1b\].*?(?:\x07|\x1b\\)/g
+function stripAnsi(str: string): string {
+  return str.replace(ANSI_RE, '')
+}
+
+// Detect common shell prompt endings (after stripping ANSI)
+const PROMPT_RE = /[$%❯#>]\s*$/m
+
+function looksLikePrompt(data: string): boolean {
+  const clean = stripAnsi(data)
+  return PROMPT_RE.test(clean)
+}
+
+const COMMAND_STATE_DEBOUNCE_MS = 1500
+// Minimum output bytes before we consider the terminal "busy"
+const MIN_OUTPUT_FOR_BUSY = 200
+
 interface ManagedTerminal {
   process: import('@lydell/node-pty').IPty
   onDataCallback: ((data: string) => void) | null
   onExitCallback: ((code: number) => void) | null
+  onCommandStateCallback: ((state: CommandState) => void) | null
   scrollbackBuffer: string[]
   scrollbackSize: number
   exited: boolean
   exitCode: number | null
+  commandState: CommandState
+  outputSinceIdle: number
+  lastOutputChunk: string
+  commandStateTimer: ReturnType<typeof setTimeout> | null
 }
 
 const terminals = new Map<string, ManagedTerminal>()
@@ -69,10 +92,23 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
     process: ptyProcess,
     onDataCallback: null,
     onExitCallback: null,
+    onCommandStateCallback: null,
     scrollbackBuffer: [],
     scrollbackSize: 0,
     exited: false,
     exitCode: null,
+    commandState: 'idle',
+    outputSinceIdle: 0,
+    lastOutputChunk: '',
+    commandStateTimer: null,
+  }
+
+  function setCommandState(state: CommandState) {
+    if (managed.commandState === state) return
+    managed.commandState = state
+    if (managed.onCommandStateCallback) {
+      managed.onCommandStateCallback(state)
+    }
   }
 
   // Always capture output to scrollback buffer
@@ -85,6 +121,23 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
       const removed = managed.scrollbackBuffer.shift()!
       managed.scrollbackSize -= removed.length
     }
+
+    // Command state detection
+    managed.lastOutputChunk = data
+    managed.outputSinceIdle += data.length
+
+    if (managed.outputSinceIdle >= MIN_OUTPUT_FOR_BUSY && managed.commandState === 'idle') {
+      setCommandState('busy')
+    }
+
+    // Reset debounce timer — when output stops, check for prompt
+    if (managed.commandStateTimer) clearTimeout(managed.commandStateTimer)
+    managed.commandStateTimer = setTimeout(() => {
+      if (managed.commandState === 'busy' && looksLikePrompt(managed.lastOutputChunk)) {
+        setCommandState('done')
+        managed.outputSinceIdle = 0
+      }
+    }, COMMAND_STATE_DEBOUNCE_MS)
 
     // Forward to attached listener
     if (managed.onDataCallback) {
@@ -144,6 +197,27 @@ export function onTerminalExit(id: string, callback: (code: number) => void): vo
   const terminal = terminals.get(id)
   if (terminal) {
     terminal.onExitCallback = callback
+  }
+}
+
+export function onCommandState(id: string, callback: (state: CommandState) => void): void {
+  const terminal = terminals.get(id)
+  if (terminal) {
+    terminal.onCommandStateCallback = callback
+  }
+}
+
+export function getCommandState(id: string): CommandState | null {
+  const terminal = terminals.get(id)
+  if (!terminal) return null
+  return terminal.commandState
+}
+
+export function resetCommandState(id: string): void {
+  const terminal = terminals.get(id)
+  if (terminal) {
+    terminal.commandState = 'idle'
+    terminal.outputSinceIdle = 0
   }
 }
 

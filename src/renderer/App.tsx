@@ -3,6 +3,7 @@ import { AppShell } from './components/layout/AppShell'
 import { useWorktreeStore } from './stores/worktree-store'
 import { useTerminalStore } from './stores/terminal-store'
 import { splitTabGroup, createTabGroup, findTabGroupContaining } from './lib/split-tree'
+import { playNotificationSound } from './lib/notification-sounds'
 
 function handleSplit(direction: 'horizontal' | 'vertical') {
   const store = useWorktreeStore.getState()
@@ -34,6 +35,28 @@ export default function App() {
       })
     }
   }, [loadFromConfig])
+
+  // Global command state listener — updates store + plays sound
+  useEffect(() => {
+    if (!window.electronAPI?.terminal?.onCommandState) return
+
+    const unsub = window.electronAPI.terminal.onCommandState(({ id, state }) => {
+      useTerminalStore.getState().setCommandState(id, state)
+
+      if (state === 'done') {
+        const session = useTerminalStore.getState().getSession(id)
+        const activeWorktreeId = useWorktreeStore.getState().activeWorktreeId
+        const { notification } = useWorktreeStore.getState()
+
+        // Play sound if terminal belongs to a non-active worktree
+        if (notification.soundEnabled && session && session.worktreeId !== activeWorktreeId) {
+          playNotificationSound(notification.soundType, notification.volume)
+        }
+      }
+    })
+
+    return unsub
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
