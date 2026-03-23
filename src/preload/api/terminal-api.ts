@@ -37,8 +37,8 @@ export const terminalApi = {
     return () => ipcRenderer.removeListener(IPC.TERMINAL_EXIT, handler)
   },
 
-  onCommandState: (callback: (data: { id: string; state: CommandState }) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: { id: string; state: CommandState }) => callback(data)
+  onCommandState: (callback: (data: { id: string; state: CommandState; exitCode?: number }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { id: string; state: CommandState; exitCode?: number }) => callback(data)
     ipcRenderer.on(IPC.TERMINAL_COMMAND_STATE, handler)
     return () => ipcRenderer.removeListener(IPC.TERMINAL_COMMAND_STATE, handler)
   },

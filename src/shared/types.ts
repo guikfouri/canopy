@@ -33,6 +33,7 @@ export interface TerminalSession {
   worktreeId: string
   status: 'idle' | 'running' | 'exited'
   commandState: CommandState
+  lastExitCode?: number
   cols: number
   rows: number
   title: string

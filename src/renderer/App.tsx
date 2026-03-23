@@ -40,8 +40,8 @@ export default function App() {
   useEffect(() => {
     if (!window.electronAPI?.terminal?.onCommandState) return
 
-    const unsub = window.electronAPI.terminal.onCommandState(({ id, state }) => {
-      useTerminalStore.getState().setCommandState(id, state)
+    const unsub = window.electronAPI.terminal.onCommandState(({ id, state, exitCode }) => {
+      useTerminalStore.getState().setCommandState(id, state, exitCode)
 
       if (state === 'done') {
         const session = useTerminalStore.getState().getSession(id)

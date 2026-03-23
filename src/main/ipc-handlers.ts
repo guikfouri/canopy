@@ -28,10 +28,10 @@ function wireTerminalCallbacks(id: string): void {
     }
   })
 
-  terminalManager.onCommandState(id, (state) => {
+  terminalManager.onCommandState(id, (state, exitCode) => {
     const win = getMainWindow()
     if (win && !win.isDestroyed()) {
-      win.webContents.send(IPC.TERMINAL_COMMAND_STATE, { id, state })
+      win.webContents.send(IPC.TERMINAL_COMMAND_STATE, { id, state, exitCode })
     }
   })
 }
