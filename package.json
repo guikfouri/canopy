@@ -10,7 +10,8 @@
     "start": "electron .",
     "preview": "electron-vite preview",
     "rebuild": "electron-rebuild",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "pack": "electron-vite build && electron-builder --mac --config"
   },
   "dependencies": {
     "@lydell/node-pty": "^1.1.0",

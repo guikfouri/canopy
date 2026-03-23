@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -11,6 +11,7 @@ import '@xterm/xterm/css/xterm.css'
 declare global {
   interface Window {
     electronAPI: {
+      getPathForFile: (file: File) => string
       terminal: {
         create: (payload: { id: string; cwd: string; cols: number; rows: number; scrollback?: number }) => Promise<void>
         attach: (id: string) => Promise<{ exists: boolean; scrollback: string | null; exited: boolean; exitCode: number | null }>
@@ -52,13 +53,92 @@ interface TerminalPaneProps {
   onFocus: () => void
 }
 
+/** Shell-escape a file path (escape spaces and special chars) */
+function shellEscape(path: string): string {
+  return path.replace(/([\\  !"#$&'()*,:;<>?@[\]^`{|}~])/g, '\\$1')
+}
+
 export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const createdRef = useRef(false)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const dragCounterRef = useRef(0)
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const terminalScrollback = useWorktreeStore((s) => s.terminalScrollback)
   const terminalFontSize = useWorktreeStore((s) => s.terminalFontSize)
+
+  // Native DOM drag-and-drop listeners with capture phase
+  // to intercept events before xterm.js internal elements consume them
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
+
+    const onDragEnter = (e: DragEvent) => {
+      e.preventDefault()
+      dragCounterRef.current++
+      if (e.dataTransfer?.types.includes('Files')) {
+        setIsDragOver(true)
+      }
+    }
+
+    const onDragLeave = (e: DragEvent) => {
+      e.preventDefault()
+      dragCounterRef.current--
+      if (dragCounterRef.current <= 0) {
+        dragCounterRef.current = 0
+        setIsDragOver(false)
+      }
+    }
+
+    const onDragOver = (e: DragEvent) => {
+      e.preventDefault()
+      if (e.dataTransfer?.types.includes('Files')) {
+        e.dataTransfer.dropEffect = 'copy'
+      }
+    }
+
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragOver(false)
+      dragCounterRef.current = 0
+
+      const files = Array.from(e.dataTransfer?.files ?? [])
+      console.log('[DragDrop] drop event, files:', files.length)
+      if (files.length === 0) return
+
+      // Use Electron's webUtils.getPathForFile for reliable path resolution
+      const paths = files
+        .map((f) => {
+          const filePath = window.electronAPI.getPathForFile(f)
+          console.log('[DragDrop] file path:', filePath)
+          return shellEscape(filePath)
+        })
+        .filter(Boolean)
+        .join(' ')
+
+      if (paths) {
+        window.electronAPI.terminal.write(terminalId, paths)
+      }
+
+      terminalRef.current?.focus()
+    }
+
+    const captureOpts = { capture: true }
+    el.addEventListener('dragenter', onDragEnter, captureOpts)
+    el.addEventListener('dragleave', onDragLeave, captureOpts)
+    el.addEventListener('dragover', onDragOver, captureOpts)
+    el.addEventListener('drop', onDrop, captureOpts)
+
+    return () => {
+      el.removeEventListener('dragenter', onDragEnter, captureOpts)
+      el.removeEventListener('dragleave', onDragLeave, captureOpts)
+      el.removeEventListener('dragover', onDragOver, captureOpts)
+      el.removeEventListener('drop', onDrop, captureOpts)
+    }
+  }, [terminalId])
 
   useEffect(() => {
     if (!containerRef.current || createdRef.current) return
@@ -181,6 +261,7 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
 
   return (
     <div
+      ref={wrapperRef}
       onClick={onFocus}
       style={{
         width: '100%',
@@ -188,11 +269,10 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
         position: 'relative',
         borderRadius: '3px',
         overflow: 'hidden',
-        // Amber glow outline when focused — "Ghost Border" style
-        outline: isFocused
+        outline: isFocused || isDragOver
           ? `1px solid ${COLORS.primaryContainerOutline}`
           : '1px solid transparent',
-        boxShadow: isFocused
+        boxShadow: isFocused || isDragOver
           ? `inset 0 0 0 1px ${COLORS.primaryContainerSubtle}`
           : 'none',
         transition: 'outline-color 200ms ease-out, box-shadow 200ms ease-out',
@@ -204,6 +284,8 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
           width: '100%',
           height: '100%',
           background: COLORS.surfaceDim,
+          opacity: isDragOver ? 0.7 : 1,
+          transition: 'opacity 150ms ease-out',
         }}
       />
     </div>
