@@ -325,11 +325,22 @@ function TabItem({
 function AddTabButton({ onAddTerminal, onAddFile }: { onAddTerminal: () => void; onAddFile: () => void }) {
   const [hovered, setHovered] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 })
+  const btnRef = useRef<HTMLButtonElement>(null)
+
+  const handleClick = useCallback(() => {
+    if (!showMenu && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setMenuPos({ top: rect.bottom + 2, right: window.innerWidth - rect.right })
+    }
+    setShowMenu(!showMenu)
+  }, [showMenu])
 
   return (
-    <div style={{ position: 'relative', flexShrink: 0 }}>
+    <div style={{ flexShrink: 0 }}>
       <button
-        onClick={() => setShowMenu(!showMenu)}
+        ref={btnRef}
+        onClick={handleClick}
         title="New Tab"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -358,9 +369,9 @@ function AddTabButton({ onAddTerminal, onAddFile }: { onAddTerminal: () => void;
         <>
           <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 999 }} />
           <div style={{
-            position: 'absolute',
-            top: '100%',
-            right: 0,
+            position: 'fixed',
+            top: menuPos.top,
+            right: menuPos.right,
             zIndex: 1000,
             background: COLORS.surfaceContainerHigh,
             borderRadius: '6px',
