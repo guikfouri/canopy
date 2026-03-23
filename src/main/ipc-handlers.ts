@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, dialog } from 'electron'
+import { ipcMain, dialog } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import type { CreateTerminalPayload, ResizeTerminalPayload, CreateWorktreePayload } from '../shared/types'
 import * as terminalManager from './terminal-manager'
@@ -9,10 +9,7 @@ import { promises as fsp } from 'fs'
 import path from 'path'
 import type { FileEntry } from '../shared/types'
 
-function getMainWindow(): BrowserWindow | null {
-  const windows = BrowserWindow.getAllWindows()
-  return windows[0] || null
-}
+import { getMainWindow } from './window-ref'
 
 function wireTerminalCallbacks(id: string): void {
   terminalManager.onTerminalData(id, (data) => {

@@ -14,6 +14,7 @@ interface SidebarProps {
 
 export function Sidebar({ width, onOpenSettings }: SidebarProps) {
   const addProject = useWorktreeStore((s) => s.addProject)
+  const projects = useWorktreeStore((s) => s.projects)
   const [addHovered, setAddHovered] = useState(false)
   const [settingsHovered, setSettingsHovered] = useState(false)
   const resolved = useThemeStore((s) => s.resolved)
@@ -21,10 +22,29 @@ export function Sidebar({ width, onOpenSettings }: SidebarProps) {
   const [themeHovered, setThemeHovered] = useState(false)
 
   const handleAddProject = async () => {
-    const path = await window.electronAPI?.canopy?.openDirectoryDialog()
-    if (path) {
-      const branch = await window.electronAPI?.canopy?.getBranch(path).catch(() => 'main') ?? 'main'
+    try {
+      console.log('[Canopy] Opening directory dialog...')
+      const path = await window.electronAPI?.canopy?.openDirectoryDialog()
+      console.log('[Canopy] Dialog returned path:', path)
+      if (!path) return
+
+      // Prevent duplicate projects with the same path
+      if (projects.some((p) => p.path === path)) {
+        console.warn('[Canopy] Project already exists at', path)
+        return
+      }
+
+      console.log('[Canopy] Getting branch for', path)
+      const branch = await window.electronAPI?.canopy?.getBranch(path).catch((err: unknown) => {
+        console.warn('[Canopy] getBranch failed, defaulting to main:', err)
+        return 'main'
+      }) ?? 'main'
+      console.log('[Canopy] Branch:', branch)
+
       addProject(path, branch)
+      console.log('[Canopy] Project added successfully')
+    } catch (err) {
+      console.error('[Canopy] Failed to add project:', err)
     }
   }
 

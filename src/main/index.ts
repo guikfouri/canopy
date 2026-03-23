@@ -2,12 +2,13 @@ import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
 import { registerIpcHandlers } from './ipc-handlers'
 import { destroyAll } from './terminal-manager'
+import { setMainWindow } from './window-ref'
 
 const MIN_WIDTH = 900
 const MIN_HEIGHT = 600
 
 function createWindow(): void {
-  const mainWindow = new BrowserWindow({
+  const win = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: MIN_WIDTH,
@@ -23,17 +24,20 @@ function createWindow(): void {
     },
   })
 
+  setMainWindow(win)
+  win.on('closed', () => setMainWindow(null))
+
   // Open external links in browser
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+  win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
     return { action: 'deny' }
   })
 
   // Dev server or production build
   if (process.env.ELECTRON_RENDERER_URL) {
-    mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
+    win.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    win.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
 
