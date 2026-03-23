@@ -319,7 +319,7 @@ function getDotStyle(commandState: CommandState, isActive: boolean): React.CSSPr
   if (isActive) {
     return {
       background: COLORS.success,
-      boxShadow: `0 0 8px ${COLORS.success}50, 0 0 2px ${COLORS.success}80`,
+      boxShadow: `0 0 8px ${COLORS.successGlow}, 0 0 2px ${COLORS.successGlowStrong}`,
     }
   }
 
@@ -340,7 +340,7 @@ function getDotStyle(commandState: CommandState, isActive: boolean): React.CSSPr
     default:
       return {
         background: COLORS.textMuted,
-        boxShadow: `0 0 4px ${COLORS.textMuted}20`,
+        boxShadow: `0 0 4px ${COLORS.outlineVariantSubtle}`,
       }
   }
 }
