@@ -1,89 +1,78 @@
 import { create } from 'zustand'
-import { v4 as uuid } from 'uuid'
-import type { TerminalSession, CommandState } from '@shared/types'
+import type { CommandState, SplitNode } from '@shared/types'
+
+// Find all terminalIds in a split layout tree
+function collectTerminalIds(node: SplitNode): string[] {
+  if (node.type === 'tab-group') {
+    return node.tabs
+      .filter(t => t.type === 'terminal' && t.terminalId)
+      .map(t => t.terminalId!)
+  }
+  return [
+    ...collectTerminalIds(node.children[0]),
+    ...collectTerminalIds(node.children[1]),
+  ]
+}
+
+interface TerminalCommandInfo {
+  state: CommandState
+  exitCode?: number
+}
 
 interface TerminalStore {
-  sessions: Map<string, TerminalSession>
+  commandStates: Map<string, TerminalCommandInfo>
   focusedTerminalId: string | null
 
-  createSession: (worktreeId: string, cwd: string) => string
-  removeSession: (id: string) => void
   setFocused: (id: string | null) => void
-  getSession: (id: string) => TerminalSession | undefined
   setCommandState: (id: string, state: CommandState, exitCode?: number) => void
-  getWorktreeCommandState: (worktreeId: string) => CommandState
-  clearWorktreeDone: (worktreeId: string) => void
+
+  // Derive worktree command state from split layout + command states
+  getWorktreeCommandState: (splitLayout: SplitNode) => CommandState
+  clearWorktreeDone: (splitLayout: SplitNode) => void
 }
 
 export const useTerminalStore = create<TerminalStore>((set, get) => ({
-  sessions: new Map(),
+  commandStates: new Map(),
   focusedTerminalId: null,
-
-  createSession: (worktreeId: string, cwd: string) => {
-    const id = uuid()
-    const session: TerminalSession = {
-      id,
-      worktreeId,
-      status: 'idle',
-      commandState: 'idle',
-      cols: 80,
-      rows: 24,
-      title: '',
-      cwd,
-    }
-    set((state) => {
-      const sessions = new Map(state.sessions)
-      sessions.set(id, session)
-      return { sessions, focusedTerminalId: id }
-    })
-    return id
-  },
-
-  removeSession: (id: string) => {
-    set((state) => {
-      const sessions = new Map(state.sessions)
-      sessions.delete(id)
-      const focusedTerminalId = state.focusedTerminalId === id ? null : state.focusedTerminalId
-      return { sessions, focusedTerminalId }
-    })
-  },
 
   setFocused: (id: string | null) => set({ focusedTerminalId: id }),
 
-  getSession: (id: string) => get().sessions.get(id),
-
   setCommandState: (id: string, state: CommandState, exitCode?: number) => {
     set((prev) => {
-      const session = prev.sessions.get(id)
-      if (!session || session.commandState === state) return prev
-      const sessions = new Map(prev.sessions)
-      sessions.set(id, { ...session, commandState: state, lastExitCode: exitCode })
-      return { sessions }
+      const current = prev.commandStates.get(id)
+      if (current?.state === state) return prev
+      const commandStates = new Map(prev.commandStates)
+      commandStates.set(id, { state, exitCode })
+      return { commandStates }
     })
   },
 
-  getWorktreeCommandState: (worktreeId: string) => {
-    const sessions = get().sessions
+  getWorktreeCommandState: (splitLayout: SplitNode) => {
+    const terminalIds = collectTerminalIds(splitLayout)
+    const states = get().commandStates
     let hasBusy = false
-    for (const session of sessions.values()) {
-      if (session.worktreeId !== worktreeId) continue
-      if (session.commandState === 'done') return 'done'
-      if (session.commandState === 'busy') hasBusy = true
+    for (const id of terminalIds) {
+      const info = states.get(id)
+      if (!info) continue
+      if (info.state === 'done') return 'done'
+      if (info.state === 'busy') hasBusy = true
     }
     return hasBusy ? 'busy' : 'idle'
   },
 
-  clearWorktreeDone: (worktreeId: string) => {
+  clearWorktreeDone: (splitLayout: SplitNode) => {
+    const terminalIds = collectTerminalIds(splitLayout)
     set((prev) => {
-      const sessions = new Map(prev.sessions)
       let changed = false
-      for (const [id, session] of sessions) {
-        if (session.worktreeId === worktreeId && session.commandState === 'done') {
-          sessions.set(id, { ...session, commandState: 'idle' })
+      const commandStates = new Map(prev.commandStates)
+      for (const id of terminalIds) {
+        const info = commandStates.get(id)
+        if (info?.state === 'done') {
+          commandStates.set(id, { state: 'idle' })
           changed = true
         }
       }
-      return changed ? { sessions } : prev
+      return changed ? { commandStates } : prev
     })
   },
 }))

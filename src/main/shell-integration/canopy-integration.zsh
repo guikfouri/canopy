@@ -35,4 +35,5 @@ preexec_functions+=(__canopy_preexec)
 
 # Append input-start marker to PS1
 # B marks the boundary between prompt and user input
-PS1="${PS1}$(__canopy_osc133 B)"
+# %{...%} tells zsh these are zero-width (non-printing) characters
+PS1="${PS1}%{$(__canopy_osc133 B)%}"

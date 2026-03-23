@@ -318,8 +318,8 @@ function NewWorktreeInput({ onSubmit, onCancel }: {
 function getDotStyle(commandState: CommandState, isActive: boolean): React.CSSProperties {
   if (isActive) {
     return {
-      background: COLORS.success,
-      boxShadow: `0 0 8px ${COLORS.successGlow}, 0 0 2px ${COLORS.successGlowStrong}`,
+      background: COLORS.activeDot,
+      boxShadow: `0 0 8px ${COLORS.activeDotGlow}, 0 0 2px ${COLORS.activeDot}`,
     }
   }
 
@@ -353,15 +353,15 @@ function WorktreeItem({ worktree, isActive, index, onSelect, onDelete }: {
   onDelete: () => void
 }) {
   const [hovered, setHovered] = useState(false)
-  const commandState = useTerminalStore((s) => s.getWorktreeCommandState(worktree.id))
+  const commandState = useTerminalStore((s) => s.getWorktreeCommandState(worktree.splitLayout))
   const clearDone = useTerminalStore((s) => s.clearWorktreeDone)
 
   // Clear 'done' state when user activates this worktree
   useEffect(() => {
     if (isActive && commandState === 'done') {
-      clearDone(worktree.id)
+      clearDone(worktree.splitLayout)
     }
-  }, [isActive, commandState, clearDone, worktree.id])
+  }, [isActive, commandState, clearDone, worktree.splitLayout])
 
   const bg = isActive
     ? COLORS.surfaceContainerHigh

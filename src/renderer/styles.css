@@ -69,6 +69,9 @@
   --success-glow: rgba(74, 222, 128, 0.31);
   --success-glow-strong: rgba(74, 222, 128, 0.50);
   --secondary-glow: rgba(255, 183, 122, 0.13);
+  /* Active indicator (blue) */
+  --active-dot: #60a5fa;
+  --active-dot-glow: rgba(96, 165, 250, 0.4);
   /* Scrim and shadow */
   --scrim: rgba(12, 12, 31, 0.7);
   --shadow-color: rgba(0, 0, 0, 0.4);
@@ -128,6 +131,9 @@
   --success-glow: rgba(27, 122, 61, 0.25);
   --success-glow-strong: rgba(27, 122, 61, 0.40);
   --secondary-glow: rgba(168, 94, 0, 0.10);
+  /* Active indicator (blue) */
+  --active-dot: #3b82f6;
+  --active-dot-glow: rgba(59, 130, 246, 0.35);
   /* Scrim and shadow */
   --scrim: rgba(0, 0, 0, 0.35);
   --shadow-color: rgba(0, 0, 0, 0.12);
