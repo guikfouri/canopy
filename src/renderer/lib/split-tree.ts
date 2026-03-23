@@ -138,6 +138,55 @@ export function renameTab(tree: SplitNode, groupId: string, tabId: string, title
   }
 }
 
+export function updateTabProps(tree: SplitNode, tabId: string, props: Partial<Tab>): SplitNode {
+  if (tree.type === 'tab-group') {
+    const hasTab = tree.tabs.some(t => t.id === tabId)
+    if (!hasTab) return tree
+    return {
+      ...tree,
+      tabs: tree.tabs.map(t => t.id === tabId ? { ...t, ...props } : t),
+    }
+  }
+  return {
+    ...tree,
+    children: [
+      updateTabProps(tree.children[0], tabId, props),
+      updateTabProps(tree.children[1], tabId, props),
+    ],
+  }
+}
+
+export function findTabsByFilePath(tree: SplitNode, filePath: string): { groupId: string; tabId: string }[] {
+  if (tree.type === 'tab-group') {
+    return tree.tabs
+      .filter(t => t.type === 'file' && t.filePath === filePath)
+      .map(t => ({ groupId: tree.id, tabId: t.id }))
+  }
+  return [
+    ...findTabsByFilePath(tree.children[0], filePath),
+    ...findTabsByFilePath(tree.children[1], filePath),
+  ]
+}
+
+export function removeTabsByFilePath(tree: SplitNode, filePath: string): SplitNode | null {
+  if (tree.type === 'tab-group') {
+    const newTabs = tree.tabs.filter(t => !(t.type === 'file' && t.filePath === filePath))
+    if (newTabs.length === 0) return null
+    const activeTabId = tree.tabs.find(t => t.id === tree.activeTabId && !(t.type === 'file' && t.filePath === filePath))
+      ? tree.activeTabId
+      : newTabs[0].id
+    return { ...tree, tabs: newTabs, activeTabId }
+  }
+
+  const left = removeTabsByFilePath(tree.children[0], filePath)
+  const right = removeTabsByFilePath(tree.children[1], filePath)
+
+  if (left === null) return right
+  if (right === null) return left
+
+  return { ...tree, children: [left, right] }
+}
+
 export function reorderTabs(tree: SplitNode, groupId: string, tabs: Tab[]): SplitNode {
   if (tree.type === 'tab-group') {
     if (tree.id === groupId) {

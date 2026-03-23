@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useWorktreeStore } from '../../stores/worktree-store'
+import { useTerminalStore } from '../../stores/terminal-store'
 import { COLORS } from '../../lib/constants'
-import type { Project, Worktree } from '@shared/types'
+import type { Project, Worktree, CommandState } from '@shared/types'
 
 export function WorktreeList() {
   const projects = useWorktreeStore((s) => s.projects)
@@ -312,6 +313,36 @@ function NewWorktreeInput({ onSubmit, onCancel }: {
   )
 }
 
+function getDotStyle(commandState: CommandState, isActive: boolean): React.CSSProperties {
+  if (isActive) {
+    return {
+      background: COLORS.success,
+      boxShadow: `0 0 8px ${COLORS.successGlow}, 0 0 2px ${COLORS.successGlowStrong}`,
+    }
+  }
+
+  switch (commandState) {
+    case 'busy':
+      return {
+        background: COLORS.primaryContainer,
+        animation: 'dotPulse 1.5s ease-in-out infinite',
+        // CSS custom property for the animation keyframes
+        ['--dot-color' as string]: COLORS.primaryContainer,
+      }
+    case 'done':
+      return {
+        background: COLORS.success,
+        animation: 'doneGlow 1.5s ease-out forwards',
+        ['--dot-color' as string]: COLORS.success,
+      }
+    default:
+      return {
+        background: COLORS.textMuted,
+        boxShadow: `0 0 4px ${COLORS.outlineVariantSubtle}`,
+      }
+  }
+}
+
 function WorktreeItem({ worktree, isActive, index, onSelect, onDelete }: {
   worktree: Worktree
   isActive: boolean
@@ -320,12 +351,23 @@ function WorktreeItem({ worktree, isActive, index, onSelect, onDelete }: {
   onDelete: () => void
 }) {
   const [hovered, setHovered] = useState(false)
+  const commandState = useTerminalStore((s) => s.getWorktreeCommandState(worktree.id))
+  const clearDone = useTerminalStore((s) => s.clearWorktreeDone)
+
+  // Clear 'done' state when user activates this worktree
+  useEffect(() => {
+    if (isActive && commandState === 'done') {
+      clearDone(worktree.id)
+    }
+  }, [isActive, commandState, clearDone, worktree.id])
 
   const bg = isActive
     ? COLORS.surfaceContainerHigh
     : hovered
       ? COLORS.surfaceContainerHighest
       : 'transparent'
+
+  const dotStyle = getDotStyle(commandState, isActive)
 
   return (
     <button
@@ -363,17 +405,14 @@ function WorktreeItem({ worktree, isActive, index, onSelect, onDelete }: {
         }} />
       )}
 
-      {/* Status dot with ambient glow */}
+      {/* Status dot — color reflects terminal command state */}
       <div style={{
         width: '6px',
         height: '6px',
         borderRadius: '50%',
-        background: isActive ? COLORS.success : COLORS.secondary,
-        boxShadow: isActive
-          ? `0 0 8px ${COLORS.successGlow}, 0 0 2px ${COLORS.successGlowStrong}`
-          : `0 0 4px ${COLORS.secondaryGlow}`,
         flexShrink: 0,
-        transition: 'box-shadow 200ms ease-out',
+        transition: 'background 200ms ease-out, box-shadow 200ms ease-out',
+        ...dotStyle,
       }} />
 
       <div style={{ minWidth: 0, flex: 1 }}>

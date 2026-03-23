@@ -1,7 +1,13 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
-import type { Project, Worktree, SplitNode, CanopyConfig } from '@shared/types'
+import type { Project, Worktree, SplitNode, CanopyConfig, NotificationConfig } from '@shared/types'
+
+const DEFAULT_NOTIFICATION: NotificationConfig = {
+  soundEnabled: true,
+  soundType: 'ding',
+  volume: 0.5,
+}
 import { createTabGroup } from '../lib/split-tree'
 import { PROJECT_COLORS } from '../lib/constants'
 import { useThemeStore } from '../lib/theme'
@@ -11,6 +17,7 @@ interface WorktreeStore {
   worktrees: Worktree[]
   activeWorktreeId: string | null
   sidebarWidth: number
+  notification: NotificationConfig
   loaded: boolean
 
   loadFromConfig: (config: CanopyConfig) => void
@@ -24,6 +31,7 @@ interface WorktreeStore {
   getWorktreesForProject: (projectId: string) => Worktree[]
   updateSplitLayout: (worktreeId: string, layout: SplitNode) => void
   updateWorktreeBranch: (worktreeId: string, branch: string) => void
+  updateNotification: (config: Partial<NotificationConfig>) => void
   toConfig: () => CanopyConfig
   saveConfig: () => void
 }
@@ -36,6 +44,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
   worktrees: [],
   activeWorktreeId: null,
   sidebarWidth: 220,
+  notification: DEFAULT_NOTIFICATION,
   loaded: false,
 
   loadFromConfig: (config: CanopyConfig) => {
@@ -46,6 +55,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
       worktrees: config.worktrees || [],
       activeWorktreeId: config.activeWorktreeId,
       sidebarWidth: config.sidebarWidth,
+      notification: config.notification || DEFAULT_NOTIFICATION,
       loaded: true,
     })
     _isLoadingConfig = false
@@ -164,6 +174,12 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
     }))
   },
 
+  updateNotification: (config) => {
+    set((state) => ({
+      notification: { ...state.notification, ...config },
+    }))
+  },
+
   toConfig: () => {
     const state = get()
     return {
@@ -174,6 +190,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
       activeWorktreeId: state.activeWorktreeId,
       sidebarWidth: state.sidebarWidth,
       fileExplorerWidth: 280,
+      notification: state.notification,
     }
   },
 
@@ -189,7 +206,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
 let _saveTimer: ReturnType<typeof setTimeout> | null = null
 
 useWorktreeStore.subscribe(
-  (s) => ({ projects: s.projects, worktrees: s.worktrees, activeWorktreeId: s.activeWorktreeId, sidebarWidth: s.sidebarWidth }),
+  (s) => ({ projects: s.projects, worktrees: s.worktrees, activeWorktreeId: s.activeWorktreeId, sidebarWidth: s.sidebarWidth, notification: s.notification }),
   () => {
     if (_isLoadingConfig) return
     if (_saveTimer) clearTimeout(_saveTimer)
