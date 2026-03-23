@@ -9,11 +9,13 @@ const NO_DRAG = { WebkitAppRegion: 'no-drag' } as React.CSSProperties
 
 interface SidebarProps {
   width: number
+  onOpenSettings: () => void
 }
 
-export function Sidebar({ width }: SidebarProps) {
+export function Sidebar({ width, onOpenSettings }: SidebarProps) {
   const addProject = useWorktreeStore((s) => s.addProject)
   const [addHovered, setAddHovered] = useState(false)
+  const [settingsHovered, setSettingsHovered] = useState(false)
   const resolved = useThemeStore((s) => s.resolved)
   const toggleTheme = useThemeStore((s) => s.toggleTheme)
   const [themeHovered, setThemeHovered] = useState(false)
@@ -156,10 +158,13 @@ export function Sidebar({ width }: SidebarProps) {
         <WorktreeList />
       </div>
 
-      {/* Bottom: add project + version */}
+      {/* Bottom: add project + settings */}
       <div style={{
         padding: '8px 20px 12px',
         borderTop: `1px solid ${COLORS.outlineVariantSubtle}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         ...NO_DRAG,
       }}>
         <button
@@ -184,6 +189,31 @@ export function Sidebar({ width }: SidebarProps) {
             <path d="M7 2v10M2 7h10" />
           </svg>
           Add project
+        </button>
+        <button
+          onClick={onOpenSettings}
+          onMouseEnter={() => setSettingsHovered(true)}
+          onMouseLeave={() => setSettingsHovered(false)}
+          style={{
+            width: '26px',
+            height: '26px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: settingsHovered ? COLORS.surfaceContainerHighest : 'transparent',
+            border: 'none',
+            borderRadius: '6px',
+            color: settingsHovered ? COLORS.primary : COLORS.textMuted,
+            cursor: 'pointer',
+            transition: 'all 200ms ease-out',
+          }}
+          title="Settings"
+          aria-label="Settings"
+        >
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="8" cy="8" r="2.5" />
+            <path d="M13.3 9.7a1.2 1.2 0 0 0 .24 1.32l.04.04a1.45 1.45 0 1 1-2.06 2.06l-.04-.04a1.2 1.2 0 0 0-1.32-.24 1.2 1.2 0 0 0-.73 1.1v.11a1.45 1.45 0 1 1-2.9 0v-.06a1.2 1.2 0 0 0-.78-1.1 1.2 1.2 0 0 0-1.32.24l-.04.04a1.45 1.45 0 1 1-2.06-2.06l.04-.04a1.2 1.2 0 0 0 .24-1.32 1.2 1.2 0 0 0-1.1-.73h-.11a1.45 1.45 0 1 1 0-2.9h.06a1.2 1.2 0 0 0 1.1-.78 1.2 1.2 0 0 0-.24-1.32l-.04-.04A1.45 1.45 0 1 1 4.23 1.87l.04.04a1.2 1.2 0 0 0 1.32.24h.06a1.2 1.2 0 0 0 .73-1.1v-.11a1.45 1.45 0 1 1 2.9 0v.06a1.2 1.2 0 0 0 .73 1.1 1.2 1.2 0 0 0 1.32-.24l.04-.04a1.45 1.45 0 1 1 2.06 2.06l-.04.04a1.2 1.2 0 0 0-.24 1.32v.06a1.2 1.2 0 0 0 1.1.73h.11a1.45 1.45 0 1 1 0 2.9h-.06a1.2 1.2 0 0 0-1.1.73z" />
+          </svg>
         </button>
       </div>
     </div>

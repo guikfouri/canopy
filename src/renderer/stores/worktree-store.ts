@@ -17,6 +17,8 @@ interface WorktreeStore {
   worktrees: Worktree[]
   activeWorktreeId: string | null
   sidebarWidth: number
+  terminalScrollback: number
+  terminalFontSize: number
   notification: NotificationConfig
   loaded: boolean
 
@@ -44,6 +46,8 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
   worktrees: [],
   activeWorktreeId: null,
   sidebarWidth: 220,
+  terminalScrollback: 10_000,
+  terminalFontSize: 13,
   notification: DEFAULT_NOTIFICATION,
   loaded: false,
 
@@ -55,6 +59,8 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
       worktrees: config.worktrees || [],
       activeWorktreeId: config.activeWorktreeId,
       sidebarWidth: config.sidebarWidth,
+      terminalScrollback: config.terminalScrollback ?? 10_000,
+      terminalFontSize: config.terminalFontSize ?? 13,
       notification: config.notification || DEFAULT_NOTIFICATION,
       loaded: true,
     })
@@ -190,6 +196,8 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
       activeWorktreeId: state.activeWorktreeId,
       sidebarWidth: state.sidebarWidth,
       fileExplorerWidth: 280,
+      terminalScrollback: state.terminalScrollback,
+      terminalFontSize: state.terminalFontSize,
       notification: state.notification,
     }
   },
@@ -206,7 +214,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
 let _saveTimer: ReturnType<typeof setTimeout> | null = null
 
 useWorktreeStore.subscribe(
-  (s) => ({ projects: s.projects, worktrees: s.worktrees, activeWorktreeId: s.activeWorktreeId, sidebarWidth: s.sidebarWidth, notification: s.notification }),
+  (s) => ({ projects: s.projects, worktrees: s.worktrees, activeWorktreeId: s.activeWorktreeId, sidebarWidth: s.sidebarWidth, terminalScrollback: s.terminalScrollback, terminalFontSize: s.terminalFontSize, notification: s.notification }),
   () => {
     if (_isLoadingConfig) return
     if (_saveTimer) clearTimeout(_saveTimer)

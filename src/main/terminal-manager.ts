@@ -10,7 +10,7 @@ async function loadPty() {
   return pty
 }
 
-const MAX_SCROLLBACK_SIZE = 100_000 // ~100KB of terminal output
+const DEFAULT_SCROLLBACK_SIZE = 100_000 // ~100KB of terminal output
 
 // Strip ANSI escape codes for prompt pattern matching
 const ANSI_RE = /\x1b\[[0-9;]*[a-zA-Z]|\x1b\].*?(?:\x07|\x1b\\)/g
@@ -37,6 +37,7 @@ interface ManagedTerminal {
   onCommandStateCallback: ((state: CommandState) => void) | null
   scrollbackBuffer: string[]
   scrollbackSize: number
+  maxScrollbackSize: number
   exited: boolean
   exitCode: number | null
   commandState: CommandState
@@ -88,6 +89,11 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
     })(),
   })
 
+  // Scale server buffer proportionally: ~10 bytes per scrollback line
+  const maxScrollbackSize = payload.scrollback
+    ? Math.round(payload.scrollback * 10)
+    : DEFAULT_SCROLLBACK_SIZE
+
   const managed: ManagedTerminal = {
     process: ptyProcess,
     onDataCallback: null,
@@ -95,6 +101,7 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
     onCommandStateCallback: null,
     scrollbackBuffer: [],
     scrollbackSize: 0,
+    maxScrollbackSize,
     exited: false,
     exitCode: null,
     commandState: 'idle',
@@ -117,7 +124,7 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
     managed.scrollbackSize += data.length
 
     // Trim buffer if it exceeds max size
-    while (managed.scrollbackSize > MAX_SCROLLBACK_SIZE && managed.scrollbackBuffer.length > 1) {
+    while (managed.scrollbackSize > managed.maxScrollbackSize && managed.scrollbackBuffer.length > 1) {
       const removed = managed.scrollbackBuffer.shift()!
       managed.scrollbackSize -= removed.length
     }

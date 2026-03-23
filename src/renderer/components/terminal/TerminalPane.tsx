@@ -5,13 +5,14 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { COLORS, getXtermTheme } from '../../lib/constants'
 import { useThemeStore } from '../../lib/theme'
 import { useTerminalStore } from '../../stores/terminal-store'
+import { useWorktreeStore } from '../../stores/worktree-store'
 import '@xterm/xterm/css/xterm.css'
 
 declare global {
   interface Window {
     electronAPI: {
       terminal: {
-        create: (payload: { id: string; cwd: string; cols: number; rows: number }) => Promise<void>
+        create: (payload: { id: string; cwd: string; cols: number; rows: number; scrollback?: number }) => Promise<void>
         attach: (id: string) => Promise<{ exists: boolean; scrollback: string | null; exited: boolean; exitCode: number | null }>
         destroy: (id: string) => Promise<void>
         write: (id: string, data: string) => void
@@ -56,6 +57,8 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const createdRef = useRef(false)
+  const terminalScrollback = useWorktreeStore((s) => s.terminalScrollback)
+  const terminalFontSize = useWorktreeStore((s) => s.terminalFontSize)
 
   useEffect(() => {
     if (!containerRef.current || createdRef.current) return
@@ -64,12 +67,12 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
     const terminal = new Terminal({
       theme: getXtermTheme(useThemeStore.getState().resolved),
       fontFamily: "'JetBrains Mono', 'Menlo', monospace",
-      fontSize: 13,
+      fontSize: terminalFontSize,
       lineHeight: 1.25,
       cursorBlink: true,
       cursorStyle: 'bar',
       allowProposedApi: true,
-      scrollback: 10000,
+      scrollback: terminalScrollback,
     })
 
     const fitAddon = new FitAddon()
@@ -107,6 +110,7 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
           cwd,
           cols: terminal.cols,
           rows: terminal.rows,
+          scrollback: terminalScrollback,
         })
       }
     })

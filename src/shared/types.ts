@@ -79,6 +79,8 @@ export interface CanopyConfig {
   activeWorktreeId: string | null
   sidebarWidth: number
   fileExplorerWidth: number
+  terminalScrollback: number
+  terminalFontSize: number
   notification?: NotificationConfig
 }
 
@@ -113,6 +115,7 @@ export interface CreateTerminalPayload {
   cwd: string
   cols: number
   rows: number
+  scrollback?: number
 }
 
 export interface ResizeTerminalPayload {
