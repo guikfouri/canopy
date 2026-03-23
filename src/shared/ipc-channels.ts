@@ -41,4 +41,7 @@ export const IPC = {
 
   // Dialog (extended)
   DIALOG_SAVE_FILE: 'dialog:save-file',
+
+  // Shell
+  SHELL_OPEN_EXTERNAL: 'shell:open-external',
 } as const

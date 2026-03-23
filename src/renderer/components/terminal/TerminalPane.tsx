@@ -41,6 +41,7 @@ declare global {
         listBranches: (repoPath: string) => Promise<{ name: string; current: boolean }[]>
         checkoutBranch: (worktreePath: string, branch: string) => Promise<void>
         gitStatus: (worktreePath: string) => Promise<{ path: string; status: string; staged: boolean }[]>
+        openExternal: (url: string) => Promise<void>
       }
     }
   }
@@ -106,14 +107,12 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
       dragCounterRef.current = 0
 
       const files = Array.from(e.dataTransfer?.files ?? [])
-      console.log('[DragDrop] drop event, files:', files.length)
       if (files.length === 0) return
 
       // Use Electron's webUtils.getPathForFile for reliable path resolution
       const paths = files
         .map((f) => {
           const filePath = window.electronAPI.getPathForFile(f)
-          console.log('[DragDrop] file path:', filePath)
           return shellEscape(filePath)
         })
         .filter(Boolean)
@@ -157,7 +156,9 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
 
     const fitAddon = new FitAddon()
     terminal.loadAddon(fitAddon)
-    terminal.loadAddon(new WebLinksAddon())
+    terminal.loadAddon(new WebLinksAddon((_event, uri) => {
+      window.electronAPI.canopy.openExternal(uri)
+    }))
 
     terminal.open(containerRef.current)
 
