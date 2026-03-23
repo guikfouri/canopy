@@ -26,14 +26,26 @@ export interface SplitNodeInternal {
 export type SplitNode = TabGroupNode | SplitNodeInternal
 
 // ── Terminal Session ───────────────────────────────
+export type CommandState = 'idle' | 'busy' | 'done'
+
 export interface TerminalSession {
   id: string
   worktreeId: string
   status: 'idle' | 'running' | 'exited'
+  commandState: CommandState
   cols: number
   rows: number
   title: string
   cwd: string
+}
+
+// ── Notification Config ───────────────────────────
+export type NotificationSound = 'ding' | 'chime' | 'bell' | 'pop'
+
+export interface NotificationConfig {
+  soundEnabled: boolean
+  soundType: NotificationSound
+  volume: number // 0-1
 }
 
 // ── Project (top-level repo) ───────────────────────
@@ -69,6 +81,7 @@ export interface CanopyConfig {
   fileExplorerWidth: number
   terminalScrollback: number
   terminalFontSize: number
+  notification?: NotificationConfig
 }
 
 // ── File Tree ──────────────────────────────────────

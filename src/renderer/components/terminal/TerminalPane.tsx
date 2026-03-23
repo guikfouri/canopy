@@ -19,6 +19,7 @@ declare global {
         resize: (id: string, cols: number, rows: number) => void
         onOutput: (cb: (data: { id: string; data: string }) => void) => () => void
         onExit: (cb: (data: { id: string; code: number }) => void) => () => void
+        onCommandState: (cb: (data: { id: string; state: import('@shared/types').CommandState }) => void) => () => void
       }
       canopy: {
         loadConfig: () => Promise<import('@shared/types').CanopyConfig>
@@ -29,7 +30,12 @@ declare global {
         readDir: (dirPath: string) => Promise<import('@shared/types').FileEntry[]>
         readFile: (filePath: string) => Promise<string | null>
         writeFile: (filePath: string, content: string) => Promise<boolean>
+        createDir: (dirPath: string) => Promise<boolean>
+        rename: (oldPath: string, newPath: string) => Promise<boolean>
+        delete: (targetPath: string) => Promise<boolean>
+        stat: (filePath: string) => Promise<{ exists: boolean; isDirectory: boolean } | null>
         openDirectoryDialog: () => Promise<string | null>
+        saveFileDialog: (defaultPath?: string) => Promise<string | null>
         getBranch: (worktreePath: string) => Promise<string>
         listBranches: (repoPath: string) => Promise<{ name: string; current: boolean }[]>
         checkoutBranch: (worktreePath: string, branch: string) => Promise<void>

@@ -41,4 +41,19 @@ export const canopyApi = {
 
   gitStatus: (worktreePath: string): Promise<{ path: string; status: string; staged: boolean }[]> =>
     ipcRenderer.invoke(IPC.GIT_STATUS, worktreePath),
+
+  createDir: (dirPath: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC.FS_CREATE_DIR, dirPath),
+
+  rename: (oldPath: string, newPath: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC.FS_RENAME, { oldPath, newPath }),
+
+  delete: (targetPath: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC.FS_DELETE, targetPath),
+
+  stat: (filePath: string): Promise<{ exists: boolean; isDirectory: boolean } | null> =>
+    ipcRenderer.invoke(IPC.FS_STAT, filePath),
+
+  saveFileDialog: (defaultPath?: string): Promise<string | null> =>
+    ipcRenderer.invoke(IPC.DIALOG_SAVE_FILE, defaultPath),
 }
