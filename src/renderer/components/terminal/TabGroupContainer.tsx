@@ -5,7 +5,7 @@ import { TerminalPane } from './TerminalPane'
 import { FileEditorPane } from './FileEditorPane'
 import { useTerminalStore } from '../../stores/terminal-store'
 import { useWorktreeStore } from '../../stores/worktree-store'
-import { createTab, addTabToGroup, removeTabFromGroup, setActiveTab, renameTab, reorderTabs, moveTabBetweenGroups } from '../../lib/split-tree'
+import { createTab, addTabToGroup, removeTabFromGroup, setActiveTab, renameTab, reorderTabs, moveTabBetweenGroups, updateTabProps } from '../../lib/split-tree'
 import { COLORS } from '../../lib/constants'
 
 interface TabGroupContainerProps {
@@ -72,6 +72,16 @@ export function TabGroupContainer({ group, cwd, worktreeId }: TabGroupContainerP
     updateLayout((layout) => moveTabBetweenGroups(layout, sourceGroupId, group.id, tabId, insertIndex))
   }, [group.id, updateLayout])
 
+  const handleAddFile = useCallback(() => {
+    const title = `Untitled-${untitledCounter++}`
+    const tab = createTab('file', title)
+    updateLayout((layout) => addTabToGroup(layout, group.id, tab))
+  }, [group.id, updateLayout])
+
+  const handleFilePathChange = useCallback((tabId: string, filePath: string, title: string) => {
+    updateLayout((layout) => updateTabProps(layout, tabId, { filePath, title }))
+  }, [updateLayout])
+
   const handleDirtyChange = useCallback((tabId: string, isDirty: boolean) => {
     updateLayout((layout) => {
       if (layout.type === 'tab-group' && layout.id === group.id) {
@@ -105,6 +115,7 @@ export function TabGroupContainer({ group, cwd, worktreeId }: TabGroupContainerP
         onSelectTab={handleSelectTab}
         onCloseTab={handleCloseTab}
         onAddTerminal={handleAddTerminal}
+        onAddFile={handleAddFile}
         onRenameTab={handleRenameTab}
         onReorderTabs={handleReorderTabs}
         onDropTabFromGroup={handleDropTabFromGroup}
@@ -124,6 +135,7 @@ export function TabGroupContainer({ group, cwd, worktreeId }: TabGroupContainerP
               }
             }}
             onDirtyChange={(isDirty) => handleDirtyChange(activeTab.id, isDirty)}
+            onFilePathChange={handleFilePathChange}
           />
         )}
       </div>
@@ -131,18 +143,23 @@ export function TabGroupContainer({ group, cwd, worktreeId }: TabGroupContainerP
   )
 }
 
+// Module-level counter for untitled files
+let untitledCounter = 1
+
 function TabContent({
   tab,
   cwd,
   isFocused,
   onFocus,
   onDirtyChange,
+  onFilePathChange,
 }: {
   tab: Tab
   cwd: string
   isFocused: boolean
   onFocus: () => void
   onDirtyChange: (isDirty: boolean) => void
+  onFilePathChange: (tabId: string, filePath: string, title: string) => void
 }) {
   if (tab.type === 'terminal' && tab.terminalId) {
     return (
@@ -155,13 +172,15 @@ function TabContent({
     )
   }
 
-  if (tab.type === 'file' && tab.filePath) {
+  if (tab.type === 'file') {
     return (
       <FileEditorPane
         filePath={tab.filePath}
+        tabId={tab.id}
         isFocused={isFocused}
         onFocus={onFocus}
         onDirtyChange={onDirtyChange}
+        onFilePathChange={onFilePathChange}
       />
     )
   }

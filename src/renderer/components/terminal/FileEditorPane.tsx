@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as monaco from 'monaco-editor'
 import { COLORS } from '../../lib/constants'
 
 // Configure Monaco workers for Electron
 self.MonacoEnvironment = {
-  getWorker(_: string, label: string) {
-    // Use a simple inline worker for all languages
+  getWorker(_: string, _label: string) {
     const blob = new Blob(
       ['self.onmessage = function() {}'],
       { type: 'application/javascript' }
@@ -45,8 +44,10 @@ monaco.editor.defineTheme('kinetic-console', {
 })
 
 interface FileEditorPaneProps {
-  filePath: string
+  filePath?: string
+  tabId: string
   onDirtyChange?: (isDirty: boolean) => void
+  onFilePathChange?: (tabId: string, filePath: string, title: string) => void
   isFocused: boolean
   onFocus: () => void
 }
@@ -74,21 +75,33 @@ function getLanguageFromPath(filePath: string): string {
   return langMap[ext] ?? 'plaintext'
 }
 
-export function FileEditorPane({ filePath, onDirtyChange, isFocused, onFocus }: FileEditorPaneProps) {
+export function FileEditorPane({ filePath, tabId, onDirtyChange, onFilePathChange, isFocused, onFocus }: FileEditorPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const originalContentRef = useRef<string>('')
+  const filePathRef = useRef(filePath)
+  filePathRef.current = filePath
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // Load file content
   useEffect(() => {
+    if (!filePath) {
+      // Untitled buffer — start empty
+      originalContentRef.current = ''
+      if (editorRef.current) {
+        editorRef.current.getModel()?.setValue('')
+      }
+      setLoading(false)
+      return
+    }
+
     let cancelled = false
 
     async function loadFile() {
       setLoading(true)
       setError(null)
-      const content = await window.electronAPI.canopy.readFile(filePath)
+      const content = await window.electronAPI.canopy.readFile(filePath!)
       if (cancelled) return
 
       if (content === null) {
@@ -118,7 +131,7 @@ export function FileEditorPane({ filePath, onDirtyChange, isFocused, onFocus }: 
 
     const editor = monaco.editor.create(containerRef.current, {
       value: '',
-      language: getLanguageFromPath(filePath),
+      language: filePath ? getLanguageFromPath(filePath) : 'plaintext',
       theme: 'kinetic-console',
       fontFamily: "'JetBrains Mono', 'Menlo', monospace",
       fontSize: 13,
@@ -148,10 +161,34 @@ export function FileEditorPane({ filePath, onDirtyChange, isFocused, onFocus }: 
     // Save on Cmd+S
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, async () => {
       const content = editor.getValue()
-      const saved = await window.electronAPI.canopy.writeFile(filePath, content)
+      const currentPath = filePathRef.current
+      let savePath: string
+
+      if (currentPath) {
+        savePath = currentPath
+      } else {
+        // Untitled — show Save As dialog
+        const chosen = await window.electronAPI.canopy.saveFileDialog()
+        if (!chosen) return
+        savePath = chosen
+      }
+
+      const saved = await window.electronAPI.canopy.writeFile(savePath, content)
       if (saved) {
         originalContentRef.current = content
         onDirtyChange?.(false)
+
+        // If this was an untitled buffer, update the tab
+        if (!currentPath) {
+          const fileName = savePath.split('/').pop() || savePath
+          onFilePathChange?.(tabId, savePath, fileName)
+
+          // Update language based on new file extension
+          const model = editor.getModel()
+          if (model) {
+            monaco.editor.setModelLanguage(model, getLanguageFromPath(savePath))
+          }
+        }
       }
     })
 
