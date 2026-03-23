@@ -56,6 +56,13 @@
       "out/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "src/main/shell-integration",
+        "to": "shell-integration",
+        "filter": ["**/*"]
+      }
+    ],
     "asarUnpack": [
       "out/main/node_modules/@lydell/node-pty-*/**"
     ],

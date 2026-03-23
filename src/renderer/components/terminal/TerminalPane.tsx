@@ -19,7 +19,7 @@ declare global {
         resize: (id: string, cols: number, rows: number) => void
         onOutput: (cb: (data: { id: string; data: string }) => void) => () => void
         onExit: (cb: (data: { id: string; code: number }) => void) => () => void
-        onCommandState: (cb: (data: { id: string; state: import('@shared/types').CommandState }) => void) => () => void
+        onCommandState: (cb: (data: { id: string; state: import('@shared/types').CommandState; exitCode?: number }) => void) => () => void
       }
       canopy: {
         loadConfig: () => Promise<import('@shared/types').CanopyConfig>

@@ -10,7 +10,7 @@ interface TerminalStore {
   removeSession: (id: string) => void
   setFocused: (id: string | null) => void
   getSession: (id: string) => TerminalSession | undefined
-  setCommandState: (id: string, state: CommandState) => void
+  setCommandState: (id: string, state: CommandState, exitCode?: number) => void
   getWorktreeCommandState: (worktreeId: string) => CommandState
   clearWorktreeDone: (worktreeId: string) => void
 }
@@ -52,12 +52,12 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
 
   getSession: (id: string) => get().sessions.get(id),
 
-  setCommandState: (id: string, state: CommandState) => {
+  setCommandState: (id: string, state: CommandState, exitCode?: number) => {
     set((prev) => {
       const session = prev.sessions.get(id)
       if (!session || session.commandState === state) return prev
       const sessions = new Map(prev.sessions)
-      sessions.set(id, { ...session, commandState: state })
+      sessions.set(id, { ...session, commandState: state, lastExitCode: exitCode })
       return { sessions }
     })
   },
