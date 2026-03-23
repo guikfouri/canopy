@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
-import { XTERM_THEME, COLORS } from '../../lib/constants'
+import { COLORS, getXtermTheme } from '../../lib/constants'
+import { useThemeStore } from '../../lib/theme'
 import { useTerminalStore } from '../../stores/terminal-store'
 import '@xterm/xterm/css/xterm.css'
 
@@ -61,7 +62,7 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
     createdRef.current = true
 
     const terminal = new Terminal({
-      theme: XTERM_THEME,
+      theme: getXtermTheme(useThemeStore.getState().resolved),
       fontFamily: "'JetBrains Mono', 'Menlo', monospace",
       fontSize: 13,
       lineHeight: 1.25,
@@ -162,6 +163,18 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
     }
   }, [isFocused])
 
+  useEffect(() => {
+    const unsub = useThemeStore.subscribe(
+      (s) => s.resolved,
+      (resolved) => {
+        if (terminalRef.current) {
+          terminalRef.current.options.theme = getXtermTheme(resolved)
+        }
+      },
+    )
+    return unsub
+  }, [])
+
   return (
     <div
       onClick={onFocus}
@@ -173,10 +186,10 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
         overflow: 'hidden',
         // Amber glow outline when focused — "Ghost Border" style
         outline: isFocused
-          ? `1px solid ${COLORS.primaryContainer}30`
+          ? `1px solid ${COLORS.primaryContainerOutline}`
           : '1px solid transparent',
         boxShadow: isFocused
-          ? `inset 0 0 0 1px ${COLORS.primaryContainer}15`
+          ? `inset 0 0 0 1px ${COLORS.primaryContainerSubtle}`
           : 'none',
         transition: 'outline-color 200ms ease-out, box-shadow 200ms ease-out',
       }}

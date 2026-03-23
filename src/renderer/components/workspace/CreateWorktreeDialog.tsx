@@ -64,7 +64,7 @@ export function CreateWorktreeDialog({ isOpen, onClose }: CreateWorktreeDialogPr
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(12, 12, 31, 0.7)',
+        background: COLORS.scrim,
         backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
         display: 'flex',
@@ -81,7 +81,7 @@ export function CreateWorktreeDialog({ isOpen, onClose }: CreateWorktreeDialogPr
         style={{
           background: COLORS.surfaceContainer,
           borderRadius: '8px',
-          border: `1px solid ${COLORS.outlineVariant}30`,
+          border: `1px solid ${COLORS.outlineVariantLight}`,
           padding: '28px',
           width: '440px',
           display: 'flex',
@@ -214,7 +214,7 @@ function InputField({ label, hint, required, value, onChange, placeholder, autoF
           padding: '9px 12px',
           background: COLORS.surfaceContainerLowest,
           border: 'none',
-          borderBottom: `2px solid ${isFocused ? COLORS.primaryContainer : COLORS.outlineVariant}40`,
+          borderBottom: `2px solid ${isFocused ? COLORS.primaryContainerOutline : COLORS.outlineVariantMedium}`,
           borderRadius: '4px 4px 0 0',
           color: COLORS.onSurface,
           fontSize: '13px',
