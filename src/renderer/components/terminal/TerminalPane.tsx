@@ -2,15 +2,17 @@ import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
-import { XTERM_THEME, COLORS } from '../../lib/constants'
+import { COLORS, getXtermTheme } from '../../lib/constants'
+import { useThemeStore } from '../../lib/theme'
 import { useTerminalStore } from '../../stores/terminal-store'
+import { useWorktreeStore } from '../../stores/worktree-store'
 import '@xterm/xterm/css/xterm.css'
 
 declare global {
   interface Window {
     electronAPI: {
       terminal: {
-        create: (payload: { id: string; cwd: string; cols: number; rows: number }) => Promise<void>
+        create: (payload: { id: string; cwd: string; cols: number; rows: number; scrollback?: number }) => Promise<void>
         attach: (id: string) => Promise<{ exists: boolean; scrollback: string | null; exited: boolean; exitCode: number | null }>
         destroy: (id: string) => Promise<void>
         write: (id: string, data: string) => void
@@ -28,7 +30,12 @@ declare global {
         readDir: (dirPath: string) => Promise<import('@shared/types').FileEntry[]>
         readFile: (filePath: string) => Promise<string | null>
         writeFile: (filePath: string, content: string) => Promise<boolean>
+        createDir: (dirPath: string) => Promise<boolean>
+        rename: (oldPath: string, newPath: string) => Promise<boolean>
+        delete: (targetPath: string) => Promise<boolean>
+        stat: (filePath: string) => Promise<{ exists: boolean; isDirectory: boolean } | null>
         openDirectoryDialog: () => Promise<string | null>
+        saveFileDialog: (defaultPath?: string) => Promise<string | null>
         getBranch: (worktreePath: string) => Promise<string>
         listBranches: (repoPath: string) => Promise<{ name: string; current: boolean }[]>
         checkoutBranch: (worktreePath: string, branch: string) => Promise<void>
@@ -50,20 +57,22 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const createdRef = useRef(false)
+  const terminalScrollback = useWorktreeStore((s) => s.terminalScrollback)
+  const terminalFontSize = useWorktreeStore((s) => s.terminalFontSize)
 
   useEffect(() => {
     if (!containerRef.current || createdRef.current) return
     createdRef.current = true
 
     const terminal = new Terminal({
-      theme: XTERM_THEME,
+      theme: getXtermTheme(useThemeStore.getState().resolved),
       fontFamily: "'JetBrains Mono', 'Menlo', monospace",
-      fontSize: 13,
+      fontSize: terminalFontSize,
       lineHeight: 1.25,
       cursorBlink: true,
       cursorStyle: 'bar',
       allowProposedApi: true,
-      scrollback: 10000,
+      scrollback: terminalScrollback,
     })
 
     const fitAddon = new FitAddon()
@@ -101,6 +110,7 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
           cwd,
           cols: terminal.cols,
           rows: terminal.rows,
+          scrollback: terminalScrollback,
         })
       }
     })
@@ -157,6 +167,18 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
     }
   }, [isFocused])
 
+  useEffect(() => {
+    const unsub = useThemeStore.subscribe(
+      (s) => s.resolved,
+      (resolved) => {
+        if (terminalRef.current) {
+          terminalRef.current.options.theme = getXtermTheme(resolved)
+        }
+      },
+    )
+    return unsub
+  }, [])
+
   return (
     <div
       onClick={onFocus}
@@ -168,10 +190,10 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
         overflow: 'hidden',
         // Amber glow outline when focused — "Ghost Border" style
         outline: isFocused
-          ? `1px solid ${COLORS.primaryContainer}30`
+          ? `1px solid ${COLORS.primaryContainerOutline}`
           : '1px solid transparent',
         boxShadow: isFocused
-          ? `inset 0 0 0 1px ${COLORS.primaryContainer}15`
+          ? `inset 0 0 0 1px ${COLORS.primaryContainerSubtle}`
           : 'none',
         transition: 'outline-color 200ms ease-out, box-shadow 200ms ease-out',
       }}

@@ -12,7 +12,7 @@ async function loadPty() {
   return pty
 }
 
-const MAX_SCROLLBACK_SIZE = 100_000 // ~100KB of terminal output
+const DEFAULT_SCROLLBACK_SIZE = 100_000 // ~100KB of terminal output
 
 // ── Fallback prompt detection (used when OSC 133 is unavailable) ──
 
@@ -117,6 +117,7 @@ interface ManagedTerminal {
   onCommandStateCallback: ((state: CommandState, exitCode?: number) => void) | null
   scrollbackBuffer: string[]
   scrollbackSize: number
+  maxScrollbackSize: number
   exited: boolean
   exitCode: number | null
   commandState: CommandState
@@ -187,6 +188,11 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
     env,
   })
 
+  // Scale server buffer proportionally: ~10 bytes per scrollback line
+  const maxScrollbackSize = payload.scrollback
+    ? Math.round(payload.scrollback * 10)
+    : DEFAULT_SCROLLBACK_SIZE
+
   const managed: ManagedTerminal = {
     process: ptyProcess,
     onDataCallback: null,
@@ -194,6 +200,7 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
     onCommandStateCallback: null,
     scrollbackBuffer: [],
     scrollbackSize: 0,
+    maxScrollbackSize,
     exited: false,
     exitCode: null,
     commandState: 'idle',
@@ -271,7 +278,7 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
     managed.scrollbackBuffer.push(data)
     managed.scrollbackSize += data.length
 
-    while (managed.scrollbackSize > MAX_SCROLLBACK_SIZE && managed.scrollbackBuffer.length > 1) {
+    while (managed.scrollbackSize > managed.maxScrollbackSize && managed.scrollbackBuffer.length > 1) {
       const removed = managed.scrollbackBuffer.shift()!
       managed.scrollbackSize -= removed.length
     }

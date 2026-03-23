@@ -74,11 +74,14 @@ export interface Worktree {
 // ── Persisted Config ───────────────────────────────
 export interface CanopyConfig {
   version: 1
+  theme: ThemePreference
   projects: Project[]
   worktrees: Worktree[]
   activeWorktreeId: string | null
   sidebarWidth: number
   fileExplorerWidth: number
+  terminalScrollback: number
+  terminalFontSize: number
   notification?: NotificationConfig
 }
 
@@ -104,12 +107,16 @@ export interface TodoItem {
   completed: boolean
 }
 
+// ── Theme ──────────────────────────────────────
+export type ThemePreference = 'system' | 'dark' | 'light'
+
 // ── IPC Payloads ───────────────────────────────────
 export interface CreateTerminalPayload {
   id: string
   cwd: string
   cols: number
   rows: number
+  scrollback?: number
 }
 
 export interface ResizeTerminalPayload {

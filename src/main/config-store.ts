@@ -8,11 +8,14 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
 
 const DEFAULT_CONFIG: CanopyConfig = {
   version: 1,
+  theme: 'system',
   projects: [],
   worktrees: [],
   activeWorktreeId: null,
   sidebarWidth: 220,
   fileExplorerWidth: 280,
+  terminalScrollback: 10_000,
+  terminalFontSize: 13,
 }
 
 export function loadConfig(): CanopyConfig {

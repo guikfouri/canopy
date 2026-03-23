@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as monaco from 'monaco-editor'
-import { COLORS } from '../../lib/constants'
+import { COLORS, MONACO_DARK_COLORS, MONACO_LIGHT_COLORS, MONACO_DARK_RULES, MONACO_LIGHT_RULES } from '../../lib/constants'
+import { useThemeStore } from '../../lib/theme'
 
 // Configure Monaco workers for Electron
 self.MonacoEnvironment = {
-  getWorker(_: string, label: string) {
-    // Use a simple inline worker for all languages
+  getWorker(_: string, _label: string) {
     const blob = new Blob(
       ['self.onmessage = function() {}'],
       { type: 'application/javascript' }
@@ -14,39 +14,30 @@ self.MonacoEnvironment = {
   },
 }
 
-// Define Kinetic Console theme for Monaco
-monaco.editor.defineTheme('kinetic-console', {
+// Define Kinetic Console themes for Monaco
+monaco.editor.defineTheme('kinetic-dark', {
   base: 'vs-dark',
   inherit: true,
-  rules: [
-    { token: 'comment', foreground: '6b6460', fontStyle: 'italic' },
-    { token: 'keyword', foreground: 'ffba38' },
-    { token: 'string', foreground: '4ADE80' },
-    { token: 'number', foreground: 'ffb77a' },
-    { token: 'type', foreground: 'bbbcff' },
-    { token: 'function', foreground: 'ffd79b' },
-    { token: 'variable', foreground: 'e2e0fc' },
-  ],
-  colors: {
-    'editor.background': COLORS.surfaceDim,
-    'editor.foreground': COLORS.onSurface,
-    'editor.lineHighlightBackground': '#1a1a2e',
-    'editor.selectionBackground': '#ffb30040',
-    'editorCursor.foreground': COLORS.primaryContainer,
-    'editorLineNumber.foreground': COLORS.textMuted,
-    'editorLineNumber.activeForeground': COLORS.textSecondary,
-    'editor.inactiveSelectionBackground': '#ffb30020',
-    'editorIndentGuide.background': '#28283d',
-    'editorIndentGuide.activeBackground': '#333348',
-    'scrollbarSlider.background': '#33334840',
-    'scrollbarSlider.hoverBackground': '#33334880',
-    'scrollbarSlider.activeBackground': '#333348',
-  },
+  rules: [...MONACO_DARK_RULES],
+  colors: { ...MONACO_DARK_COLORS },
 })
 
+monaco.editor.defineTheme('kinetic-light', {
+  base: 'vs',
+  inherit: true,
+  rules: [...MONACO_LIGHT_RULES],
+  colors: { ...MONACO_LIGHT_COLORS },
+})
+
+function getMonacoThemeName(resolved: 'dark' | 'light') {
+  return resolved === 'dark' ? 'kinetic-dark' : 'kinetic-light'
+}
+
 interface FileEditorPaneProps {
-  filePath: string
+  filePath?: string
+  tabId: string
   onDirtyChange?: (isDirty: boolean) => void
+  onFilePathChange?: (tabId: string, filePath: string, title: string) => void
   isFocused: boolean
   onFocus: () => void
 }
@@ -74,21 +65,33 @@ function getLanguageFromPath(filePath: string): string {
   return langMap[ext] ?? 'plaintext'
 }
 
-export function FileEditorPane({ filePath, onDirtyChange, isFocused, onFocus }: FileEditorPaneProps) {
+export function FileEditorPane({ filePath, tabId, onDirtyChange, onFilePathChange, isFocused, onFocus }: FileEditorPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const originalContentRef = useRef<string>('')
+  const filePathRef = useRef(filePath)
+  filePathRef.current = filePath
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // Load file content
   useEffect(() => {
+    if (!filePath) {
+      // Untitled buffer — start empty
+      originalContentRef.current = ''
+      if (editorRef.current) {
+        editorRef.current.getModel()?.setValue('')
+      }
+      setLoading(false)
+      return
+    }
+
     let cancelled = false
 
     async function loadFile() {
       setLoading(true)
       setError(null)
-      const content = await window.electronAPI.canopy.readFile(filePath)
+      const content = await window.electronAPI.canopy.readFile(filePath!)
       if (cancelled) return
 
       if (content === null) {
@@ -118,8 +121,8 @@ export function FileEditorPane({ filePath, onDirtyChange, isFocused, onFocus }: 
 
     const editor = monaco.editor.create(containerRef.current, {
       value: '',
-      language: getLanguageFromPath(filePath),
-      theme: 'kinetic-console',
+      language: filePath ? getLanguageFromPath(filePath) : 'plaintext',
+      theme: getMonacoThemeName(useThemeStore.getState().resolved),
       fontFamily: "'JetBrains Mono', 'Menlo', monospace",
       fontSize: 13,
       lineHeight: 20,
@@ -148,10 +151,34 @@ export function FileEditorPane({ filePath, onDirtyChange, isFocused, onFocus }: 
     // Save on Cmd+S
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, async () => {
       const content = editor.getValue()
-      const saved = await window.electronAPI.canopy.writeFile(filePath, content)
+      const currentPath = filePathRef.current
+      let savePath: string
+
+      if (currentPath) {
+        savePath = currentPath
+      } else {
+        // Untitled — show Save As dialog
+        const chosen = await window.electronAPI.canopy.saveFileDialog()
+        if (!chosen) return
+        savePath = chosen
+      }
+
+      const saved = await window.electronAPI.canopy.writeFile(savePath, content)
       if (saved) {
         originalContentRef.current = content
         onDirtyChange?.(false)
+
+        // If this was an untitled buffer, update the tab
+        if (!currentPath) {
+          const fileName = savePath.split('/').pop() || savePath
+          onFilePathChange?.(tabId, savePath, fileName)
+
+          // Update language based on new file extension
+          const model = editor.getModel()
+          if (model) {
+            monaco.editor.setModelLanguage(model, getLanguageFromPath(savePath))
+          }
+        }
       }
     })
 
@@ -173,6 +200,16 @@ export function FileEditorPane({ filePath, onDirtyChange, isFocused, onFocus }: 
     }
   }, [isFocused])
 
+  useEffect(() => {
+    const unsub = useThemeStore.subscribe(
+      (s) => s.resolved,
+      (resolved) => {
+        monaco.editor.setTheme(getMonacoThemeName(resolved))
+      },
+    )
+    return unsub
+  }, [])
+
   return (
     <div
       onClick={onFocus}
@@ -183,10 +220,10 @@ export function FileEditorPane({ filePath, onDirtyChange, isFocused, onFocus }: 
         borderRadius: '3px',
         overflow: 'hidden',
         outline: isFocused
-          ? `1px solid ${COLORS.primaryContainer}30`
+          ? `1px solid ${COLORS.primaryContainerOutline}`
           : '1px solid transparent',
         boxShadow: isFocused
-          ? `inset 0 0 0 1px ${COLORS.primaryContainer}15`
+          ? `inset 0 0 0 1px ${COLORS.primaryContainerSubtle}`
           : 'none',
         transition: 'outline-color 200ms ease-out, box-shadow 200ms ease-out',
       }}

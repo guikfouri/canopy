@@ -1,17 +1,15 @@
-import { ipcMain, BrowserWindow, dialog } from 'electron'
+import { ipcMain, dialog } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import type { CreateTerminalPayload, ResizeTerminalPayload, CreateWorktreePayload } from '../shared/types'
 import * as terminalManager from './terminal-manager'
 import * as worktreeManager from './worktree-manager'
 import * as configStore from './config-store'
 import fs from 'fs'
+import { promises as fsp } from 'fs'
 import path from 'path'
 import type { FileEntry } from '../shared/types'
 
-function getMainWindow(): BrowserWindow | null {
-  const windows = BrowserWindow.getAllWindows()
-  return windows[0] || null
-}
+import { getMainWindow } from './window-ref'
 
 function wireTerminalCallbacks(id: string): void {
   terminalManager.onTerminalData(id, (data) => {
@@ -122,6 +120,19 @@ export function registerIpcHandlers(): void {
     return result.filePaths[0]
   })
 
+  ipcMain.handle(IPC.DIALOG_SAVE_FILE, async (_event, defaultPath?: string): Promise<string | null> => {
+    const win = getMainWindow()
+    if (!win) return null
+
+    const result = await dialog.showSaveDialog(win, {
+      title: 'Save File',
+      defaultPath: defaultPath || undefined,
+    })
+
+    if (result.canceled || !result.filePath) return null
+    return result.filePath
+  })
+
   // ── Filesystem ────────────────────────────────
   ipcMain.handle(IPC.FS_READ_FILE, async (_event, filePath: string): Promise<string | null> => {
     try {
@@ -140,11 +151,46 @@ export function registerIpcHandlers(): void {
     }
   })
 
+  ipcMain.handle(IPC.FS_CREATE_DIR, async (_event, dirPath: string): Promise<boolean> => {
+    try {
+      await fsp.mkdir(dirPath, { recursive: true })
+      return true
+    } catch {
+      return false
+    }
+  })
+
+  ipcMain.handle(IPC.FS_RENAME, async (_event, { oldPath, newPath }: { oldPath: string; newPath: string }): Promise<boolean> => {
+    try {
+      await fsp.rename(oldPath, newPath)
+      return true
+    } catch {
+      return false
+    }
+  })
+
+  ipcMain.handle(IPC.FS_DELETE, async (_event, targetPath: string): Promise<boolean> => {
+    try {
+      await fsp.rm(targetPath, { recursive: true })
+      return true
+    } catch {
+      return false
+    }
+  })
+
+  ipcMain.handle(IPC.FS_STAT, async (_event, filePath: string): Promise<{ exists: boolean; isDirectory: boolean } | null> => {
+    try {
+      const stat = await fsp.stat(filePath)
+      return { exists: true, isDirectory: stat.isDirectory() }
+    } catch {
+      return { exists: false, isDirectory: false }
+    }
+  })
+
   ipcMain.handle(IPC.FS_READ_DIR, async (_event, dirPath: string): Promise<FileEntry[]> => {
     try {
       const entries = fs.readdirSync(dirPath, { withFileTypes: true })
       return entries
-        .filter(e => !e.name.startsWith('.'))
         .sort((a, b) => {
           // Directories first, then alphabetical
           if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1

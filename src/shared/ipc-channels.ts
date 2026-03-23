@@ -31,7 +31,14 @@ export const IPC = {
   FS_READ_DIR: 'fs:readdir',
   FS_READ_FILE: 'fs:read-file',
   FS_WRITE_FILE: 'fs:write-file',
+  FS_CREATE_DIR: 'fs:create-dir',
+  FS_RENAME: 'fs:rename',
+  FS_DELETE: 'fs:delete',
+  FS_STAT: 'fs:stat',
   FS_WATCH_START: 'fs:watch:start',
   FS_WATCH_STOP: 'fs:watch:stop',
   FS_CHANGE: 'fs:change',
+
+  // Dialog (extended)
+  DIALOG_SAVE_FILE: 'dialog:save-file',
 } as const

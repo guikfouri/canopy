@@ -5,6 +5,12 @@ import { useTerminalStore } from './stores/terminal-store'
 import { splitTabGroup, createTabGroup, findTabGroupContaining } from './lib/split-tree'
 import { playNotificationSound } from './lib/notification-sounds'
 
+// Set default theme before React hydrates to prevent flash
+if (!document.documentElement.hasAttribute('data-theme')) {
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light')
+}
+
 function handleSplit(direction: 'horizontal' | 'vertical') {
   const store = useWorktreeStore.getState()
   const worktree = store.getActive()
@@ -27,11 +33,14 @@ export default function App() {
     } else {
       loadFromConfig({
         version: 1,
+        theme: 'system',
         projects: [],
         worktrees: [],
         activeWorktreeId: null,
         sidebarWidth: 220,
         fileExplorerWidth: 280,
+        terminalScrollback: 10_000,
+        terminalFontSize: 13,
       })
     }
   }, [loadFromConfig])
@@ -82,7 +91,7 @@ export default function App() {
       <div style={{
         width: '100vw',
         height: '100dvh',
-        background: '#111125',
+        background: 'var(--surface)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -91,8 +100,8 @@ export default function App() {
           width: '32px',
           height: '32px',
           borderRadius: '50%',
-          border: '2px solid #333348',
-          borderTopColor: '#ffb300',
+          border: '2px solid var(--surface-container-highest)',
+          borderTopColor: 'var(--primary-container)',
           animation: 'spin 800ms linear infinite',
         }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>

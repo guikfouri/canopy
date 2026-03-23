@@ -5,6 +5,7 @@ import { MainArea } from './MainArea'
 import { FileExplorer } from '../file-explorer/FileExplorer'
 import { ChangesPanel } from '../file-explorer/ChangesPanel'
 import { ChecksPanel } from '../file-explorer/ChecksPanel'
+import { SettingsModal } from '../settings/SettingsModal'
 import { COLORS } from '../../lib/constants'
 import { useWorktreeStore } from '../../stores/worktree-store'
 
@@ -13,6 +14,7 @@ type RightPanelTab = 'files' | 'changes' | 'checks'
 export function AppShell() {
   const [fileExplorerOpen, setFileExplorerOpen] = useState(true)
   const [fileExplorerWidth, setFileExplorerWidth] = useState(280)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const worktree = useWorktreeStore((s) => s.getActive())
 
   return (
@@ -30,7 +32,7 @@ export function AppShell() {
         flex: 1,
         overflow: 'hidden',
       }}>
-        <Sidebar width={240} />
+        <Sidebar width={240} onOpenSettings={() => setSettingsOpen(true)} />
         <MainArea
           onToggleFileExplorer={() => setFileExplorerOpen(!fileExplorerOpen)}
           fileExplorerOpen={fileExplorerOpen}
@@ -39,6 +41,7 @@ export function AppShell() {
           <FileExplorerPanel width={fileExplorerWidth} />
         )}
       </div>
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }
@@ -56,7 +59,7 @@ function FileExplorerPanel({ width }: { width: number }) {
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
-      borderLeft: `1px solid ${COLORS.outlineVariant}20`,
+      borderLeft: `1px solid ${COLORS.outlineVariantSubtle}`,
     }}>
       {/* Tab bar */}
       <div style={{
@@ -65,7 +68,7 @@ function FileExplorerPanel({ width }: { width: number }) {
         marginTop: '28px',
         padding: '0 8px',
         gap: '0',
-        borderBottom: `1px solid ${COLORS.outlineVariant}20`,
+        borderBottom: `1px solid ${COLORS.outlineVariantSubtle}`,
       }}>
         <PanelTab
           label="All files"

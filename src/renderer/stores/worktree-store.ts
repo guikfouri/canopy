@@ -10,12 +10,15 @@ const DEFAULT_NOTIFICATION: NotificationConfig = {
 }
 import { createTabGroup } from '../lib/split-tree'
 import { PROJECT_COLORS } from '../lib/constants'
+import { useThemeStore } from '../lib/theme'
 
 interface WorktreeStore {
   projects: Project[]
   worktrees: Worktree[]
   activeWorktreeId: string | null
   sidebarWidth: number
+  terminalScrollback: number
+  terminalFontSize: number
   notification: NotificationConfig
   loaded: boolean
 
@@ -43,16 +46,21 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
   worktrees: [],
   activeWorktreeId: null,
   sidebarWidth: 220,
+  terminalScrollback: 10_000,
+  terminalFontSize: 13,
   notification: DEFAULT_NOTIFICATION,
   loaded: false,
 
   loadFromConfig: (config: CanopyConfig) => {
     _isLoadingConfig = true
+    useThemeStore.getState().init(config.theme ?? 'system')
     set({
       projects: config.projects || [],
       worktrees: config.worktrees || [],
       activeWorktreeId: config.activeWorktreeId,
       sidebarWidth: config.sidebarWidth,
+      terminalScrollback: config.terminalScrollback ?? 10_000,
+      terminalFontSize: config.terminalFontSize ?? 13,
       notification: config.notification || DEFAULT_NOTIFICATION,
       loaded: true,
     })
@@ -182,11 +190,14 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
     const state = get()
     return {
       version: 1 as const,
+      theme: useThemeStore.getState().preference,
       projects: state.projects,
       worktrees: state.worktrees,
       activeWorktreeId: state.activeWorktreeId,
       sidebarWidth: state.sidebarWidth,
       fileExplorerWidth: 280,
+      terminalScrollback: state.terminalScrollback,
+      terminalFontSize: state.terminalFontSize,
       notification: state.notification,
     }
   },
@@ -203,7 +214,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
 let _saveTimer: ReturnType<typeof setTimeout> | null = null
 
 useWorktreeStore.subscribe(
-  (s) => ({ projects: s.projects, worktrees: s.worktrees, activeWorktreeId: s.activeWorktreeId, sidebarWidth: s.sidebarWidth, notification: s.notification }),
+  (s) => ({ projects: s.projects, worktrees: s.worktrees, activeWorktreeId: s.activeWorktreeId, sidebarWidth: s.sidebarWidth, terminalScrollback: s.terminalScrollback, terminalFontSize: s.terminalFontSize, notification: s.notification }),
   () => {
     if (_isLoadingConfig) return
     if (_saveTimer) clearTimeout(_saveTimer)
@@ -212,4 +223,16 @@ useWorktreeStore.subscribe(
     }, 1500)
   },
   { equalityFn: (a, b) => a === b },
+)
+
+// Auto-save when theme preference changes
+useThemeStore.subscribe(
+  (s) => s.preference,
+  () => {
+    if (_isLoadingConfig) return
+    if (_saveTimer) clearTimeout(_saveTimer)
+    _saveTimer = setTimeout(() => {
+      useWorktreeStore.getState().saveConfig()
+    }, 1500)
+  },
 )
