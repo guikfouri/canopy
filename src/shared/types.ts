@@ -68,6 +68,7 @@ export interface CanopyConfig {
   sidebarWidth: number
   fileExplorerWidth: number
   terminalScrollback: number
+  terminalFontSize: number
 }
 
 // ── File Tree ──────────────────────────────────────

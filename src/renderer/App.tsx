@@ -39,6 +39,7 @@ export default function App() {
         sidebarWidth: 220,
         fileExplorerWidth: 280,
         terminalScrollback: 10_000,
+        terminalFontSize: 13,
       })
     }
   }, [loadFromConfig])

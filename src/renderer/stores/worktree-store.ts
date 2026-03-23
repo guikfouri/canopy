@@ -12,6 +12,7 @@ interface WorktreeStore {
   activeWorktreeId: string | null
   sidebarWidth: number
   terminalScrollback: number
+  terminalFontSize: number
   loaded: boolean
 
   loadFromConfig: (config: CanopyConfig) => void
@@ -38,6 +39,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
   activeWorktreeId: null,
   sidebarWidth: 220,
   terminalScrollback: 10_000,
+  terminalFontSize: 13,
   loaded: false,
 
   loadFromConfig: (config: CanopyConfig) => {
@@ -49,6 +51,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
       activeWorktreeId: config.activeWorktreeId,
       sidebarWidth: config.sidebarWidth,
       terminalScrollback: config.terminalScrollback ?? 10_000,
+      terminalFontSize: config.terminalFontSize ?? 13,
       loaded: true,
     })
     _isLoadingConfig = false
@@ -178,6 +181,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
       sidebarWidth: state.sidebarWidth,
       fileExplorerWidth: 280,
       terminalScrollback: state.terminalScrollback,
+      terminalFontSize: state.terminalFontSize,
     }
   },
 
@@ -193,7 +197,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
 let _saveTimer: ReturnType<typeof setTimeout> | null = null
 
 useWorktreeStore.subscribe(
-  (s) => ({ projects: s.projects, worktrees: s.worktrees, activeWorktreeId: s.activeWorktreeId, sidebarWidth: s.sidebarWidth, terminalScrollback: s.terminalScrollback }),
+  (s) => ({ projects: s.projects, worktrees: s.worktrees, activeWorktreeId: s.activeWorktreeId, sidebarWidth: s.sidebarWidth, terminalScrollback: s.terminalScrollback, terminalFontSize: s.terminalFontSize }),
   () => {
     if (_isLoadingConfig) return
     if (_saveTimer) clearTimeout(_saveTimer)

@@ -52,6 +52,7 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
   const fitAddonRef = useRef<FitAddon | null>(null)
   const createdRef = useRef(false)
   const terminalScrollback = useWorktreeStore((s) => s.terminalScrollback)
+  const terminalFontSize = useWorktreeStore((s) => s.terminalFontSize)
 
   useEffect(() => {
     if (!containerRef.current || createdRef.current) return
@@ -60,7 +61,7 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
     const terminal = new Terminal({
       theme: getXtermTheme(useThemeStore.getState().resolved),
       fontFamily: "'JetBrains Mono', 'Menlo', monospace",
-      fontSize: 13,
+      fontSize: terminalFontSize,
       lineHeight: 1.25,
       cursorBlink: true,
       cursorStyle: 'bar',

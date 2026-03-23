@@ -15,6 +15,7 @@ const DEFAULT_CONFIG: CanopyConfig = {
   sidebarWidth: 220,
   fileExplorerWidth: 280,
   terminalScrollback: 10_000,
+  terminalFontSize: 13,
 }
 
 export function loadConfig(): CanopyConfig {
