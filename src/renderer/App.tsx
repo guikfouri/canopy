@@ -67,6 +67,19 @@ export default function App() {
     return unsub
   }, [])
 
+  // Prevent Electron from navigating when files are dropped anywhere
+  useEffect(() => {
+    const preventNav = (e: DragEvent) => {
+      e.preventDefault()
+    }
+    document.addEventListener('dragover', preventNav)
+    document.addEventListener('drop', preventNav)
+    return () => {
+      document.removeEventListener('dragover', preventNav)
+      document.removeEventListener('drop', preventNav)
+    }
+  }, [])
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey

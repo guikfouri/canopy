@@ -1,10 +1,11 @@
-import { contextBridge } from 'electron'
+import { contextBridge, webUtils } from 'electron'
 import { terminalApi } from './api/terminal-api'
 import { canopyApi } from './api/canopy-api'
 
 const electronAPI = {
   terminal: terminalApi,
   canopy: canopyApi,
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)
