@@ -3,6 +3,7 @@ import { useWorktreeStore } from '../../stores/worktree-store'
 import { useTerminalStore } from '../../stores/terminal-store'
 import { COLORS } from '../../lib/constants'
 import { ContextMenu } from '../shared/ContextMenu'
+import { ColorPicker } from '../shared/ColorPicker'
 import type { Project, Worktree, CommandState, ProjectFolder } from '@shared/types'
 
 export function WorktreeList() {
@@ -22,6 +23,11 @@ export function WorktreeList() {
   const toggleFlag = useWorktreeStore((s) => s.toggleWorktreeFlag)
   const removeFolder = useWorktreeStore((s) => s.removeFolder)
   const renameFolder = useWorktreeStore((s) => s.renameFolder)
+  const updateProjectColor = useWorktreeStore((s) => s.updateProjectColor)
+  const updateFolderColor = useWorktreeStore((s) => s.updateFolderColor)
+
+  // Color picker state
+  const [colorPicker, setColorPicker] = useState<{ id: string; type: 'project' | 'folder'; color: string; rect: DOMRect } | null>(null)
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<Worktree | null>(null)
@@ -221,6 +227,7 @@ export function WorktreeList() {
                 onContextMenu={(wt, x, y) => setContextMenu({ x, y, worktree: wt })}
                 onFolderContextMenu={(f, x, y) => setFolderContextMenu({ x, y, folder: f })}
                 onProjectContextMenu={(p, x, y) => setProjectContextMenu({ x, y, project: p })}
+                onColorClick={(id, type, color, rect) => setColorPicker({ id, type, color, rect })}
               />
             )
           }
@@ -247,6 +254,7 @@ export function WorktreeList() {
               onReorderWorktrees={(fromIdx, toIdx) => reorderWorktrees(project.id, fromIdx, toIdx)}
               onContextMenu={(wt, x, y) => setContextMenu({ x, y, worktree: wt })}
               onProjectContextMenu={(x, y) => setProjectContextMenu({ x, y, project })}
+              onColorClick={(rect) => setColorPicker({ id: project.id, type: 'project', color: project.color, rect })}
             />
           )
         })}
@@ -278,6 +286,19 @@ export function WorktreeList() {
               onClick: () => { setDeleteTarget(contextMenu.worktree); setContextMenu(null) },
             }] : []),
           ]}
+        />
+      )}
+
+      {/* Color picker popover */}
+      {colorPicker && (
+        <ColorPicker
+          currentColor={colorPicker.color}
+          anchorRect={colorPicker.rect}
+          onSelect={(color) => {
+            if (colorPicker.type === 'project') updateProjectColor(colorPicker.id, color)
+            else updateFolderColor(colorPicker.id, color)
+          }}
+          onDismiss={() => setColorPicker(null)}
         />
       )}
 
@@ -405,7 +426,7 @@ function FolderContextMenuWrapper({ folder, x, y, onDismiss, onRename, onDelete 
 }
 
 // ── Folder Group ──────────────────────────────────────────
-function FolderGroup({ folder, projects, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree, isDragOver, isFolderDropTarget, onDragStart, onDragOver, onDrop, onDragEnd, onFolderDragOver, onFolderDrop, onReorderWorktrees, onReorderProjects, onMoveProjectOut, onContextMenu, onFolderContextMenu, onProjectContextMenu }: {
+function FolderGroup({ folder, projects, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree, isDragOver, isFolderDropTarget, onDragStart, onDragOver, onDrop, onDragEnd, onFolderDragOver, onFolderDrop, onReorderWorktrees, onReorderProjects, onMoveProjectOut, onContextMenu, onFolderContextMenu, onProjectContextMenu, onColorClick }: {
   folder: ProjectFolder
   projects: Project[]
   worktrees: Worktree[]
@@ -427,6 +448,7 @@ function FolderGroup({ folder, projects, worktrees, activeId, onSelect, onCreate
   onContextMenu: (wt: Worktree, x: number, y: number) => void
   onFolderContextMenu: (folder: ProjectFolder, x: number, y: number) => void
   onProjectContextMenu: (project: Project, x: number, y: number) => void
+  onColorClick: (id: string, type: 'project' | 'folder', color: string, rect: DOMRect) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const [headerHovered, setHeaderHovered] = useState(false)
@@ -540,14 +562,28 @@ function FolderGroup({ folder, projects, worktrees, activeId, onSelect, onCreate
           </svg>
         </button>
 
-        {/* Folder icon with color */}
-        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" strokeWidth="1.3" strokeLinecap="round" style={{ flexShrink: 0 }}>
-          <path
-            d="M1.5 3.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-7.5z"
-            stroke={folder.color}
-            fill={`${folder.color}20`}
-          />
-        </svg>
+        {/* Folder icon with color — clickable for color picker */}
+        <div
+          onClick={(e) => { e.stopPropagation(); onColorClick(folder.id, 'folder', folder.color, e.currentTarget.getBoundingClientRect()) }}
+          title="Change color"
+          style={{
+            flexShrink: 0,
+            cursor: 'pointer',
+            transition: 'transform 100ms ease-out',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.2)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+        >
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" strokeWidth="1.3" strokeLinecap="round">
+            <path
+              d="M1.5 3.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-7.5z"
+              stroke={folder.color}
+              fill={`${folder.color}20`}
+            />
+          </svg>
+        </div>
 
         <span
           onClick={() => setCollapsed(!collapsed)}
@@ -598,6 +634,7 @@ function FolderGroup({ folder, projects, worktrees, activeId, onSelect, onCreate
                 onReorderWorktrees={(fromIdx, toIdx) => onReorderWorktrees(project.id, fromIdx, toIdx)}
                 onContextMenu={onContextMenu}
                 onProjectContextMenu={(x, y) => onProjectContextMenu(project, x, y)}
+                onColorClick={(rect) => onColorClick(project.id, 'project', project.color, rect)}
                 insideFolder
               />
             )
@@ -621,7 +658,7 @@ function FolderGroup({ folder, projects, worktrees, activeId, onSelect, onCreate
 }
 
 // ── Project Group ──────────────────────────────────────────
-function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd, onReorderWorktrees, onContextMenu, onProjectContextMenu, insideFolder }: {
+function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd, onReorderWorktrees, onContextMenu, onProjectContextMenu, onColorClick, insideFolder }: {
   project: Project
   worktrees: Worktree[]
   activeId: string | null
@@ -636,6 +673,7 @@ function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree
   onReorderWorktrees: (fromIndex: number, toIndex: number) => void
   onContextMenu: (wt: Worktree, x: number, y: number) => void
   onProjectContextMenu: (x: number, y: number) => void
+  onColorClick: (rect: DOMRect) => void
   insideFolder?: boolean
 }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -724,14 +762,22 @@ function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree
           </svg>
         </button>
 
-        <div style={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '2px',
-          background: project.color,
-          boxShadow: `0 0 6px ${project.color}30`,
-          flexShrink: 0,
-        }} />
+        <div
+          onClick={(e) => { e.stopPropagation(); onColorClick(e.currentTarget.getBoundingClientRect()) }}
+          title="Change color"
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '2px',
+            background: project.color,
+            boxShadow: `0 0 6px ${project.color}30`,
+            flexShrink: 0,
+            cursor: 'pointer',
+            transition: 'transform 100ms ease-out',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.3)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+        />
 
         <span
           onClick={() => setCollapsed(!collapsed)}
