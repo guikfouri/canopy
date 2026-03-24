@@ -18,12 +18,14 @@ export function WorktreeList() {
   const reorderWorktrees = useWorktreeStore((s) => s.reorderWorktrees)
   const moveProjectToFolder = useWorktreeStore((s) => s.moveProjectToFolder)
   const reorderProjectsInFolder = useWorktreeStore((s) => s.reorderProjectsInFolder)
+  const removeProject = useWorktreeStore((s) => s.removeProject)
   const toggleFlag = useWorktreeStore((s) => s.toggleWorktreeFlag)
   const removeFolder = useWorktreeStore((s) => s.removeFolder)
   const renameFolder = useWorktreeStore((s) => s.renameFolder)
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<Worktree | null>(null)
+  const [deleteProjectTarget, setDeleteProjectTarget] = useState<Project | null>(null)
 
   // Sidebar-level drag state
   const [sidebarDragOverIndex, setSidebarDragOverIndex] = useState<number | null>(null)
@@ -93,6 +95,25 @@ export function WorktreeList() {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; worktree: Worktree } | null>(null)
   const [folderContextMenu, setFolderContextMenu] = useState<{ x: number; y: number; folder: ProjectFolder } | null>(null)
+  const [projectContextMenu, setProjectContextMenu] = useState<{ x: number; y: number; project: Project } | null>(null)
+
+  const handleRemoveProject = async (project: Project) => {
+    const projectWorktrees = worktrees.filter(w => w.projectId === project.id)
+
+    // Clean up non-main git worktrees on disk (fire-and-forget)
+    for (const wt of projectWorktrees) {
+      if (!wt.isMain) {
+        try {
+          await window.electronAPI.canopy.removeWorktree(wt.worktreePath)
+        } catch (err) {
+          console.error('Failed to remove worktree from disk:', err)
+        }
+      }
+    }
+
+    removeProject(project.id)
+    setDeleteProjectTarget(null)
+  }
 
   if (sidebarOrder.length === 0 && projects.length === 0) {
     return (
@@ -199,6 +220,7 @@ export function WorktreeList() {
                 onMoveProjectOut={(projectId) => moveProjectToFolder(projectId, null)}
                 onContextMenu={(wt, x, y) => setContextMenu({ x, y, worktree: wt })}
                 onFolderContextMenu={(f, x, y) => setFolderContextMenu({ x, y, folder: f })}
+                onProjectContextMenu={(p, x, y) => setProjectContextMenu({ x, y, project: p })}
               />
             )
           }
@@ -224,6 +246,7 @@ export function WorktreeList() {
               onDragEnd={handleSidebarDragEnd}
               onReorderWorktrees={(fromIdx, toIdx) => reorderWorktrees(project.id, fromIdx, toIdx)}
               onContextMenu={(wt, x, y) => setContextMenu({ x, y, worktree: wt })}
+              onProjectContextMenu={(x, y) => setProjectContextMenu({ x, y, project })}
             />
           )
         })}
@@ -267,6 +290,32 @@ export function WorktreeList() {
           onDismiss={() => setFolderContextMenu(null)}
           onRename={(name) => { renameFolder(folderContextMenu.folder.id, name); setFolderContextMenu(null) }}
           onDelete={() => { removeFolder(folderContextMenu.folder.id); setFolderContextMenu(null) }}
+        />
+      )}
+
+      {/* Project context menu */}
+      {projectContextMenu && (
+        <ContextMenu
+          x={projectContextMenu.x}
+          y={projectContextMenu.y}
+          onDismiss={() => setProjectContextMenu(null)}
+          items={[
+            {
+              label: 'Remove project',
+              danger: true,
+              onClick: () => { setDeleteProjectTarget(projectContextMenu.project); setProjectContextMenu(null) },
+            },
+          ]}
+        />
+      )}
+
+      {/* Delete project confirmation dialog */}
+      {deleteProjectTarget && (
+        <DeleteProjectDialog
+          project={deleteProjectTarget}
+          worktreeCount={worktrees.filter(w => w.projectId === deleteProjectTarget.id).length}
+          onConfirm={() => handleRemoveProject(deleteProjectTarget)}
+          onCancel={() => setDeleteProjectTarget(null)}
         />
       )}
     </>
@@ -356,7 +405,7 @@ function FolderContextMenuWrapper({ folder, x, y, onDismiss, onRename, onDelete 
 }
 
 // ── Folder Group ──────────────────────────────────────────
-function FolderGroup({ folder, projects, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree, isDragOver, isFolderDropTarget, onDragStart, onDragOver, onDrop, onDragEnd, onFolderDragOver, onFolderDrop, onReorderWorktrees, onReorderProjects, onMoveProjectOut, onContextMenu, onFolderContextMenu }: {
+function FolderGroup({ folder, projects, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree, isDragOver, isFolderDropTarget, onDragStart, onDragOver, onDrop, onDragEnd, onFolderDragOver, onFolderDrop, onReorderWorktrees, onReorderProjects, onMoveProjectOut, onContextMenu, onFolderContextMenu, onProjectContextMenu }: {
   folder: ProjectFolder
   projects: Project[]
   worktrees: Worktree[]
@@ -377,6 +426,7 @@ function FolderGroup({ folder, projects, worktrees, activeId, onSelect, onCreate
   onMoveProjectOut: (projectId: string) => void
   onContextMenu: (wt: Worktree, x: number, y: number) => void
   onFolderContextMenu: (folder: ProjectFolder, x: number, y: number) => void
+  onProjectContextMenu: (project: Project, x: number, y: number) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const [headerHovered, setHeaderHovered] = useState(false)
@@ -426,8 +476,6 @@ function FolderGroup({ folder, projects, worktrees, activeId, onSelect, onCreate
     dragProjectId.current = null
     setProjectDragOverIndex(null)
   }, [])
-
-  const totalWorktrees = projects.reduce((sum, p) => sum + worktrees.filter(w => w.projectId === p.id).length, 0)
 
   return (
     <div style={{ animation: 'slideDown 200ms ease-out' }}>
@@ -549,6 +597,7 @@ function FolderGroup({ folder, projects, worktrees, activeId, onSelect, onCreate
                 onDragEnd={handleProjectDragEnd}
                 onReorderWorktrees={(fromIdx, toIdx) => onReorderWorktrees(project.id, fromIdx, toIdx)}
                 onContextMenu={onContextMenu}
+                onProjectContextMenu={(x, y) => onProjectContextMenu(project, x, y)}
                 insideFolder
               />
             )
@@ -572,7 +621,7 @@ function FolderGroup({ folder, projects, worktrees, activeId, onSelect, onCreate
 }
 
 // ── Project Group ──────────────────────────────────────────
-function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd, onReorderWorktrees, onContextMenu, insideFolder }: {
+function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd, onReorderWorktrees, onContextMenu, onProjectContextMenu, insideFolder }: {
   project: Project
   worktrees: Worktree[]
   activeId: string | null
@@ -586,6 +635,7 @@ function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree
   onDragEnd: () => void
   onReorderWorktrees: (fromIndex: number, toIndex: number) => void
   onContextMenu: (wt: Worktree, x: number, y: number) => void
+  onProjectContextMenu: (x: number, y: number) => void
   insideFolder?: boolean
 }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -641,6 +691,7 @@ function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree
         onDragEnd={onDragEnd}
         onMouseEnter={() => setHeaderHovered(true)}
         onMouseLeave={() => setHeaderHovered(false)}
+        onContextMenu={(e) => { e.preventDefault(); onProjectContextMenu(e.clientX, e.clientY) }}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -839,7 +890,6 @@ function getDotStyle(commandState: CommandState, isActive: boolean): React.CSSPr
       return {
         background: COLORS.primaryContainer,
         animation: 'dotPulse 1.5s ease-in-out infinite',
-        // CSS custom property for the animation keyframes
         ['--dot-color' as string]: COLORS.primaryContainer,
       }
     case 'done':
@@ -1149,6 +1199,116 @@ function DeleteDialog({ worktree, onConfirm, onCancel }: {
             style={buttonStyle('delete', true)}
           >
             Delete branch
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DeleteProjectDialog({ project, worktreeCount, onConfirm, onCancel }: {
+  project: Project
+  worktreeCount: number
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const [hoveredBtn, setHoveredBtn] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onCancel])
+
+  const buttonStyle = (id: string, isDestructive: boolean): React.CSSProperties => ({
+    padding: '6px 14px',
+    borderRadius: '6px',
+    border: 'none',
+    fontSize: '12px',
+    fontFamily: "'Inter', sans-serif",
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 150ms ease-out',
+    background: hoveredBtn === id
+      ? (isDestructive ? COLORS.errorContainer : COLORS.surfaceContainerHighest)
+      : COLORS.surfaceContainerHigh,
+    color: isDestructive ? COLORS.error : COLORS.onSurface,
+  })
+
+  return (
+    <div
+      onClick={onCancel}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: COLORS.scrim,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        animation: 'fadeIn 150ms ease-out',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: COLORS.surfaceContainer,
+          borderRadius: '12px',
+          padding: '20px 24px',
+          maxWidth: '340px',
+          width: '100%',
+          boxShadow: '0 16px 48px var(--shadow-color)',
+          animation: 'slideDown 200ms ease-out',
+        }}
+      >
+        <div style={{
+          color: COLORS.onSurface,
+          fontSize: '14px',
+          fontFamily: "'Inter', sans-serif",
+          fontWeight: 600,
+          marginBottom: '8px',
+        }}>
+          Remove "{project.name}"?
+        </div>
+
+        <div style={{
+          color: COLORS.textSecondary,
+          fontSize: '12px',
+          fontFamily: "'Inter', sans-serif",
+          lineHeight: 1.5,
+          marginBottom: '4px',
+        }}>
+          This will remove the project and its {worktreeCount} worktree{worktreeCount !== 1 ? 's' : ''} from Canopy.
+        </div>
+
+        <div style={{
+          color: COLORS.textMuted,
+          fontSize: '11px',
+          fontFamily: "'Inter', sans-serif",
+          lineHeight: 1.5,
+          marginBottom: '16px',
+        }}>
+          Files on disk will not be deleted.
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <button
+            onClick={onCancel}
+            onMouseEnter={() => setHoveredBtn('cancel')}
+            onMouseLeave={() => setHoveredBtn(null)}
+            style={buttonStyle('cancel', false)}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            onMouseEnter={() => setHoveredBtn('remove')}
+            onMouseLeave={() => setHoveredBtn(null)}
+            style={buttonStyle('remove', true)}
+          >
+            Remove
           </button>
         </div>
       </div>
