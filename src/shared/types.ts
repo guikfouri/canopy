@@ -69,6 +69,7 @@ export interface Worktree {
   isMain: boolean        // True if this is the main worktree (not a created one)
   splitLayout: SplitNode
   createdAt: string
+  flagged?: boolean      // User-set flag to revisit this worktree later
 }
 
 // ── Persisted Config ───────────────────────────────
