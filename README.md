@@ -33,27 +33,97 @@ You're working on a feature branch. A critical bug comes in. You `git stash`, sw
 
 ### 🌲 Git Worktree Isolation
 
-Each branch runs in a completely isolated git worktree. No stashing, no conflicts, no lost work. Your `main` branch and feature branch coexist side by side with independent file systems.
+Each branch runs in a completely isolated git worktree. No stashing, no conflicts, no lost work. Your `main` branch and feature branch coexist side by side with independent file systems, terminal sessions, and editor state.
+
+- Create, list, and remove worktrees from the sidebar
+- Each worktree tracks its own branch, split layout, tabs, and file tree
+- Instant switching — click a worktree to switch context immediately
 
 ### 📐 Flexible Split Panes
 
-Split your workspace horizontally or vertically with `Cmd+D` / `Cmd+Shift+D`. Nest splits arbitrarily deep. Drag dividers to resize. The recursive split-tree architecture handles any layout you can dream up.
+Split your workspace horizontally or vertically with `Cmd+D` / `Cmd+Shift+D`. Nest splits arbitrarily deep. Drag dividers to resize with visual feedback. The recursive binary split-tree architecture handles any layout you can dream up.
+
+- Horizontal and vertical splits with arbitrary nesting
+- Draggable dividers with glow effect on hover
+- Proportional ratio tracking for smooth resizing
 
 ### 📑 Tab Groups
 
 Each pane contains a tab group with terminals and file editors. Organize your workflow naturally — tests in one pane, server in another, editor in the third.
 
+- Terminal tabs and editor tabs in the same group
+- Drag-and-drop to reorder tabs within a group or move between groups
+- Tab renaming (double-click or right-click context menu)
+- Dirty state indicator (`*`) for unsaved editor tabs
+- Add tab dropdown (+) to create new terminal or file tabs
+
 ### ✏️ Monaco Editor
 
-Built-in VS Code-powered editor for quick file edits without leaving Canopy. Full syntax highlighting, IntelliSense, and all the Monaco goodness.
+Built-in VS Code-powered editor for quick file edits without leaving Canopy.
+
+- Syntax highlighting for 20+ languages (TypeScript, JavaScript, Python, Go, Rust, SQL, YAML, and more)
+- Bracket pair colorization, word wrap, line numbers
+- Save with `Cmd+S`
+- Automatic language detection from file extension
+- Theme synced with app theme (dark/light)
+
+### 🐚 Shell Integration (OSC 133)
+
+Canopy understands your shell's command lifecycle through OSC 133 escape sequences, with intelligent fallback for shells without integration.
+
+- **Zsh, Bash, and Fish** shell support with automatic bootstrap
+- **Command state detection** — idle, busy (executing), or done (with exit code)
+- Dual-layer prompt detection: OSC 133 sequences + ANSI pattern matching fallback
+- Activity-based idle detection (4-second silence timeout) compatible with interactive programs like `node`, `python`, and Claude Code
+
+### 🔔 Background Command Notifications
+
+Never miss a finished command again. When a terminal is in the background and a command completes, Canopy notifies you.
+
+- Visual indicator in the sidebar (colored dot: idle / busy / done)
+- Procedurally generated notification sounds (Ding, Chime, Bell, Pop)
+- Configurable sound type and volume in settings
+- Sound can be toggled on/off
+
+### 📂 File Explorer
+
+A full file browser and git changes panel in the right sidebar.
+
+- **All Files** tab: directory tree with expand/collapse, sorted folders-first
+- **Changes** tab: git status with color-coded indicators (added, modified, deleted, renamed, untracked)
+  - Staged vs unstaged distinction
+  - Filter dropdown (All / Uncommitted)
+  - Change count badge
+- **Checks** tab: placeholder for future CI/linting integration
+- Inline create, rename, and delete files/folders
+- Double-click to open files in the Monaco editor
+- Right-click context menu for all operations
+
+### 📋 Drag-and-Drop File Path Insertion
+
+Drop files directly into the terminal to insert their shell-escaped paths. Supports multi-file drop with space-separated paths and visual feedback during drag.
 
 ### 💾 Session Persistence
 
-Terminal sessions survive worktree switches. Switch to another branch, come back, and your terminal is exactly where you left it — with full scrollback history (up to 100KB buffer).
+Terminal sessions survive worktree switches. Switch to another branch, come back, and your terminal is exactly where you left it — with full scrollback replay (up to 100KB buffer).
+
+All workspace state is auto-saved to `~/.canopy/config.json` with debounced writes (1.5s), including:
+
+- Projects and worktrees
+- Split layouts per worktree
+- Active worktree selection
+- Theme preference
+- Terminal and notification settings
 
 ### 🎨 Kinetic Console Design
 
-A carefully crafted dark theme with deep navy surfaces (`#111125`) and warm amber accents (`#ffb300`). Boundaries are defined through tonal shifts, not harsh borders. Easy on the eyes during long sessions.
+A carefully crafted theme system with dark and light modes.
+
+- **Dark theme**: deep navy surfaces (`#111125`) with warm amber accents (`#ffb300`)
+- **Light theme**: warm beige (`#faf7f2`) with orange accents
+- **System mode**: follows OS appearance preference
+- 8-level tonal hierarchy for depth — boundaries defined through tonal shifts, not harsh borders
+- Consistent theming across terminal (xterm.js) and editor (Monaco)
 
 ## Quick Start
 
@@ -127,7 +197,7 @@ For each branch you want to work on, create a **worktree**. Canopy runs `git wor
 Each worktree has its own:
 - Terminal sessions (PTY processes)
 - Split pane layout
-- File explorer
+- File explorer tree
 - Editor tabs
 - Git status tracking
 
@@ -202,6 +272,15 @@ interface SplitNodeInternal {
 
 Renderer and main process communicate through typed IPC channels. The renderer is the source of truth for UI state. The main process manages system resources (PTY processes, git operations, filesystem access).
 
+| Domain | Operations |
+|--------|-----------|
+| **Terminal** | Create, attach, input, resize, destroy, output, exit, command-state |
+| **Worktree** | Create, list, remove |
+| **Git** | Get branch, list branches, checkout, status |
+| **Config** | Load, save |
+| **Filesystem** | Read dir, read/write file, create dir, rename, delete, stat, watch |
+| **Dialog** | Open directory, save file |
+
 #### State Persistence
 
 All workspace state (projects, worktrees, layouts, active selections) is serialized to `~/.canopy/config.json` with debounced auto-save (1.5s after last change).
@@ -214,6 +293,22 @@ All workspace state (projects, worktrees, layouts, active selections) is seriali
 | `Cmd/Ctrl+Shift+D` | Split pane vertically |
 | `Cmd/Ctrl+T` | New terminal tab |
 | `Cmd/Ctrl+W` | Close active tab |
+| `Cmd/Ctrl+S` | Save file (in editor) |
+| `Double-click tab` | Rename tab |
+| `Esc` | Close dialogs |
+
+## Settings
+
+Access settings from the gear icon in the sidebar bottom.
+
+| Setting | Options |
+|---------|---------|
+| **Theme** | System (follows OS), Dark, Light |
+| **Font Size** | 1–32pt (default 13) |
+| **Scrollback** | Lines to keep in buffer (default 10,000) |
+| **Sound** | On/Off toggle |
+| **Sound Type** | Ding, Chime, Bell, Pop |
+| **Volume** | 0–100% slider |
 
 ## Project Structure
 
@@ -257,12 +352,20 @@ npm run preview    # Preview production build
 - [x] Multi-project support
 - [x] Git worktree creation & management
 - [x] Split pane terminal layout
-- [x] Tab groups with terminals
-- [x] Monaco editor integration
-- [x] File explorer with git status
+- [x] Tab groups with terminals & editors
+- [x] Drag-and-drop tab reordering & cross-group moves
+- [x] Monaco editor integration (20+ languages)
+- [x] File explorer with git status & changes panel
+- [x] OSC 133 shell integration (zsh, bash, fish)
+- [x] Command state detection (idle/busy/done)
+- [x] Background command notifications with sound
+- [x] Drag-and-drop file path insertion into terminal
+- [x] Dark & light themes with system mode
 - [x] Session persistence across worktree switches
+- [x] Scrollback buffer replay (100KB)
 - [x] Config auto-save & restore
-- [x] Linux support
+- [x] Settings panel (theme, font, scrollback, notifications)
+- [x] Linux support (.AppImage, .deb)
 - [ ] Windows support
 - [ ] Integrated search across worktrees
 - [ ] Custom keybinding configuration
