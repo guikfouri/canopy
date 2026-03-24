@@ -36,6 +36,8 @@ export default function App() {
         theme: 'system',
         projects: [],
         worktrees: [],
+        folders: [],
+        sidebarOrder: [],
         activeWorktreeId: null,
         sidebarWidth: 220,
         fileExplorerWidth: 280,

@@ -49,6 +49,19 @@ export interface NotificationConfig {
   volume: number // 0-1
 }
 
+// ── Project Folder ───────────────────────────────────
+export interface ProjectFolder {
+  id: string
+  name: string
+  color: string
+  createdAt: string
+}
+
+// ── Sidebar Ordering ─────────────────────────────────
+export type SidebarOrderItem =
+  | { type: 'folder'; id: string }
+  | { type: 'project'; id: string }
+
 // ── Project (top-level repo) ───────────────────────
 export interface Project {
   id: string
@@ -56,6 +69,7 @@ export interface Project {
   path: string           // Root path of the git repo
   color: string
   createdAt: string
+  folderId?: string      // If inside a folder
 }
 
 // ── Worktree (git worktree within a project) ───────
@@ -78,6 +92,8 @@ export interface CanopyConfig {
   theme: ThemePreference
   projects: Project[]
   worktrees: Worktree[]
+  folders: ProjectFolder[]
+  sidebarOrder: SidebarOrderItem[]
   activeWorktreeId: string | null
   sidebarWidth: number
   fileExplorerWidth: number
