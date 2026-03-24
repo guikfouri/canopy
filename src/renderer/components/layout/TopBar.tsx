@@ -4,6 +4,7 @@ import { useWorktreeStore } from '../../stores/worktree-store'
 
 const DRAG = { WebkitAppRegion: 'drag' } as React.CSSProperties
 const NO_DRAG = { WebkitAppRegion: 'no-drag' } as React.CSSProperties
+const LEFT_PAD = window.platform?.isMacOS ? '80px' : '16px'
 
 export function TopBar() {
   const worktree = useWorktreeStore((s) => s.getActive())
@@ -21,7 +22,7 @@ export function TopBar() {
       minHeight: '38px',
       background: COLORS.surfaceContainerLow,
       borderBottom: `1px solid ${COLORS.outlineVariantFaint}`,
-      padding: '0 16px 0 80px',
+      padding: `0 16px 0 ${LEFT_PAD}`,
       gap: '6px',
       ...DRAG,
     }}>
@@ -87,7 +88,7 @@ function TopBarEmpty() {
       minHeight: '38px',
       background: COLORS.surfaceContainerLow,
       borderBottom: `1px solid ${COLORS.outlineVariantFaint}`,
-      padding: '0 16px 0 80px',
+      padding: `0 16px 0 ${LEFT_PAD}`,
       ...DRAG,
     }} />
   )

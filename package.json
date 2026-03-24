@@ -11,7 +11,9 @@
     "preview": "electron-vite preview",
     "rebuild": "electron-rebuild",
     "typecheck": "tsc --noEmit",
-    "pack": "electron-vite build && electron-builder --mac --config"
+    "pack": "electron-vite build && electron-builder --config",
+    "pack:mac": "electron-vite build && electron-builder --mac --config",
+    "pack:linux": "electron-vite build && electron-builder --linux --config"
   },
   "dependencies": {
     "@lydell/node-pty": "^1.1.0",
@@ -73,6 +75,13 @@
         "dmg",
         "zip"
       ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development"
     }
   }
 }

@@ -10,6 +10,11 @@ import '@xterm/xterm/css/xterm.css'
 
 declare global {
   interface Window {
+    platform: {
+      isMacOS: boolean
+      isWindows: boolean
+      isLinux: boolean
+    }
     electronAPI: {
       getPathForFile: (file: File) => string
       terminal: {

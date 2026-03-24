@@ -59,7 +59,7 @@ export function Sidebar({ width, onOpenSettings }: SidebarProps) {
       overflow: 'hidden',
       animation: 'fadeIn 300ms ease-out',
     }}>
-      {/* Header — macOS traffic light space + brand */}
+      {/* Header — brand area (macOS reserves space for traffic lights) */}
       <div style={{
         padding: '12px 20px',
         display: 'flex',
