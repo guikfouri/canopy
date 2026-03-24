@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useWorktreeStore } from '../../stores/worktree-store'
 import { useTerminalStore } from '../../stores/terminal-store'
 import { COLORS } from '../../lib/constants'
+import { ContextMenu } from '../shared/ContextMenu'
 import type { Project, Worktree, CommandState } from '@shared/types'
 
 export function WorktreeList() {
@@ -12,8 +13,13 @@ export function WorktreeList() {
   const addWorktree = useWorktreeStore((s) => s.addWorktree)
   const removeWorktree = useWorktreeStore((s) => s.removeWorktree)
 
+  const toggleFlag = useWorktreeStore((s) => s.toggleWorktreeFlag)
+
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<Worktree | null>(null)
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; worktree: Worktree } | null>(null)
 
   if (projects.length === 0) {
     return (
@@ -102,6 +108,7 @@ export function WorktreeList() {
               onSelect={setActive}
               onCreateWorktree={(name) => handleCreateWorktree(project, name)}
               onDeleteWorktree={setDeleteTarget}
+              onContextMenu={(wt, x, y) => setContextMenu({ x, y, worktree: wt })}
             />
           )
         })}
@@ -115,17 +122,38 @@ export function WorktreeList() {
           onCancel={() => setDeleteTarget(null)}
         />
       )}
+
+      {/* Worktree context menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onDismiss={() => setContextMenu(null)}
+          items={[
+            {
+              label: contextMenu.worktree.flagged ? 'Remove flag' : 'Flag for review',
+              onClick: () => { toggleFlag(contextMenu.worktree.id); setContextMenu(null) },
+            },
+            ...(!contextMenu.worktree.isMain ? [{
+              label: 'Delete worktree',
+              danger: true,
+              onClick: () => { setDeleteTarget(contextMenu.worktree); setContextMenu(null) },
+            }] : []),
+          ]}
+        />
+      )}
     </>
   )
 }
 
-function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree }: {
+function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree, onContextMenu }: {
   project: Project
   worktrees: Worktree[]
   activeId: string | null
   onSelect: (id: string) => void
   onCreateWorktree: (name: string) => void
   onDeleteWorktree: (wt: Worktree) => void
+  onContextMenu: (wt: Worktree, x: number, y: number) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const [headerHovered, setHeaderHovered] = useState(false)
@@ -239,6 +267,7 @@ function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree
               index={index}
               onSelect={() => onSelect(wt.id)}
               onDelete={() => onDeleteWorktree(wt)}
+              onContextMenu={(x, y) => onContextMenu(wt, x, y)}
             />
           ))}
 
@@ -345,12 +374,13 @@ function getDotStyle(commandState: CommandState, isActive: boolean): React.CSSPr
   }
 }
 
-function WorktreeItem({ worktree, isActive, index, onSelect, onDelete }: {
+function WorktreeItem({ worktree, isActive, index, onSelect, onDelete, onContextMenu }: {
   worktree: Worktree
   isActive: boolean
   index: number
   onSelect: () => void
   onDelete: () => void
+  onContextMenu: (x: number, y: number) => void
 }) {
   const [hovered, setHovered] = useState(false)
   const commandState = useTerminalStore((s) => s.getWorktreeCommandState(worktree.splitLayout))
@@ -377,6 +407,7 @@ function WorktreeItem({ worktree, isActive, index, onSelect, onDelete }: {
       tabIndex={0}
       onClick={onSelect}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect() }}
+      onContextMenu={(e) => { e.preventDefault(); onContextMenu(e.clientX, e.clientY) }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -446,6 +477,19 @@ function WorktreeItem({ worktree, isActive, index, onSelect, onDelete }: {
           {worktree.branch}
         </div>
       </div>
+
+      {/* Flag indicator — red asterisk */}
+      {worktree.flagged && (
+        <span style={{
+          color: COLORS.error,
+          fontSize: '16px',
+          fontWeight: 700,
+          lineHeight: 1,
+          flexShrink: 0,
+        }}>
+          *
+        </span>
+      )}
 
       {/* Delete button — only on non-main worktrees */}
       {!worktree.isMain && hovered && (

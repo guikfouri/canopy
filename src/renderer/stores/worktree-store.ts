@@ -33,6 +33,7 @@ interface WorktreeStore {
   getWorktreesForProject: (projectId: string) => Worktree[]
   updateSplitLayout: (worktreeId: string, layout: SplitNode) => void
   updateWorktreeBranch: (worktreeId: string, branch: string) => void
+  toggleWorktreeFlag: (worktreeId: string) => void
   updateNotification: (config: Partial<NotificationConfig>) => void
   toConfig: () => CanopyConfig
   saveConfig: () => void
@@ -176,6 +177,14 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
     set((state) => ({
       worktrees: state.worktrees.map(w =>
         w.id === worktreeId ? { ...w, branch } : w
+      ),
+    }))
+  },
+
+  toggleWorktreeFlag: (worktreeId) => {
+    set((state) => ({
+      worktrees: state.worktrees.map(w =>
+        w.id === worktreeId ? { ...w, flagged: !w.flagged } : w
       ),
     }))
   },
