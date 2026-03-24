@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useWorktreeStore } from '../../stores/worktree-store'
 import { useTerminalStore } from '../../stores/terminal-store'
 import { COLORS } from '../../lib/constants'
@@ -11,9 +11,44 @@ export function WorktreeList() {
   const setActive = useWorktreeStore((s) => s.setActive)
   const addWorktree = useWorktreeStore((s) => s.addWorktree)
   const removeWorktree = useWorktreeStore((s) => s.removeWorktree)
+  const reorderProjects = useWorktreeStore((s) => s.reorderProjects)
+  const reorderWorktrees = useWorktreeStore((s) => s.reorderWorktrees)
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<Worktree | null>(null)
+
+  // Project drag state
+  const [projectDragOverIndex, setProjectDragOverIndex] = useState<number | null>(null)
+  const dragProjectId = useRef<string | null>(null)
+
+  const handleProjectDragStart = useCallback((e: React.DragEvent, projectId: string) => {
+    dragProjectId.current = projectId
+    e.dataTransfer.setData('text/project-id', projectId)
+    e.dataTransfer.effectAllowed = 'move'
+  }, [])
+
+  const handleProjectDragOver = useCallback((e: React.DragEvent, index: number) => {
+    if (!e.dataTransfer.types.includes('text/project-id')) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setProjectDragOverIndex(index)
+  }, [])
+
+  const handleProjectDrop = useCallback((e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault()
+    setProjectDragOverIndex(null)
+    const droppedId = e.dataTransfer.getData('text/project-id')
+    if (!droppedId) return
+    const fromIndex = projects.findIndex(p => p.id === droppedId)
+    if (fromIndex === -1 || fromIndex === dropIndex) return
+    const adjustedIndex = dropIndex > fromIndex ? dropIndex - 1 : dropIndex
+    reorderProjects(fromIndex, adjustedIndex)
+  }, [projects, reorderProjects])
+
+  const handleProjectDragEnd = useCallback(() => {
+    dragProjectId.current = null
+    setProjectDragOverIndex(null)
+  }, [])
 
   if (projects.length === 0) {
     return (
@@ -90,7 +125,7 @@ export function WorktreeList() {
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        {projects.map((project) => {
+        {projects.map((project, index) => {
           const projectWorktrees = worktrees.filter(w => w.projectId === project.id)
 
           return (
@@ -102,6 +137,12 @@ export function WorktreeList() {
               onSelect={setActive}
               onCreateWorktree={(name) => handleCreateWorktree(project, name)}
               onDeleteWorktree={setDeleteTarget}
+              isDragOver={projectDragOverIndex === index}
+              onDragStart={(e) => handleProjectDragStart(e, project.id)}
+              onDragOver={(e) => handleProjectDragOver(e, index)}
+              onDrop={(e) => handleProjectDrop(e, index)}
+              onDragEnd={handleProjectDragEnd}
+              onReorderWorktrees={(fromIdx, toIdx) => reorderWorktrees(project.id, fromIdx, toIdx)}
             />
           )
         })}
@@ -119,22 +160,71 @@ export function WorktreeList() {
   )
 }
 
-function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree }: {
+function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd, onReorderWorktrees }: {
   project: Project
   worktrees: Worktree[]
   activeId: string | null
   onSelect: (id: string) => void
   onCreateWorktree: (name: string) => void
   onDeleteWorktree: (wt: Worktree) => void
+  isDragOver: boolean
+  onDragStart: (e: React.DragEvent) => void
+  onDragOver: (e: React.DragEvent) => void
+  onDrop: (e: React.DragEvent) => void
+  onDragEnd: () => void
+  onReorderWorktrees: (fromIndex: number, toIndex: number) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const [headerHovered, setHeaderHovered] = useState(false)
   const [showNameInput, setShowNameInput] = useState(false)
 
+  // Worktree drag state
+  const [wtDragOverIndex, setWtDragOverIndex] = useState<number | null>(null)
+  const dragWtId = useRef<string | null>(null)
+
+  const handleWtDragStart = useCallback((e: React.DragEvent, wtId: string) => {
+    e.stopPropagation()
+    dragWtId.current = wtId
+    e.dataTransfer.setData('text/worktree-id', wtId)
+    e.dataTransfer.setData('text/worktree-project-id', project.id)
+    e.dataTransfer.effectAllowed = 'move'
+  }, [project.id])
+
+  const handleWtDragOver = useCallback((e: React.DragEvent, index: number) => {
+    if (!e.dataTransfer.types.includes('text/worktree-id')) return
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'move'
+    setWtDragOverIndex(index)
+  }, [])
+
+  const handleWtDrop = useCallback((e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setWtDragOverIndex(null)
+    const droppedId = e.dataTransfer.getData('text/worktree-id')
+    const sourceProjectId = e.dataTransfer.getData('text/worktree-project-id')
+    if (!droppedId || sourceProjectId !== project.id) return
+    const fromIndex = worktrees.findIndex(w => w.id === droppedId)
+    if (fromIndex === -1 || fromIndex === dropIndex) return
+    const adjustedIndex = dropIndex > fromIndex ? dropIndex - 1 : dropIndex
+    onReorderWorktrees(fromIndex, adjustedIndex)
+  }, [project.id, worktrees, onReorderWorktrees])
+
+  const handleWtDragEnd = useCallback(() => {
+    dragWtId.current = null
+    setWtDragOverIndex(null)
+  }, [])
+
   return (
     <div style={{ animation: 'slideDown 200ms ease-out' }}>
       {/* Project header */}
       <div
+        draggable
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onDragEnd={onDragEnd}
         onMouseEnter={() => setHeaderHovered(true)}
         onMouseLeave={() => setHeaderHovered(false)}
         style={{
@@ -145,6 +235,7 @@ function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree
           cursor: 'pointer',
           borderRadius: '4px',
           background: headerHovered ? COLORS.surfaceContainerHigh : 'transparent',
+          borderTop: isDragOver ? `2px solid ${COLORS.primaryContainer}` : '2px solid transparent',
           transition: 'background 150ms ease-out',
         }}
       >
@@ -239,6 +330,11 @@ function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree
               index={index}
               onSelect={() => onSelect(wt.id)}
               onDelete={() => onDeleteWorktree(wt)}
+              isDragOver={wtDragOverIndex === index}
+              onDragStart={(e) => handleWtDragStart(e, wt.id)}
+              onDragOver={(e) => handleWtDragOver(e, index)}
+              onDrop={(e) => handleWtDrop(e, index)}
+              onDragEnd={handleWtDragEnd}
             />
           ))}
 
@@ -345,12 +441,17 @@ function getDotStyle(commandState: CommandState, isActive: boolean): React.CSSPr
   }
 }
 
-function WorktreeItem({ worktree, isActive, index, onSelect, onDelete }: {
+function WorktreeItem({ worktree, isActive, index, onSelect, onDelete, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd }: {
   worktree: Worktree
   isActive: boolean
   index: number
   onSelect: () => void
   onDelete: () => void
+  isDragOver: boolean
+  onDragStart: (e: React.DragEvent) => void
+  onDragOver: (e: React.DragEvent) => void
+  onDrop: (e: React.DragEvent) => void
+  onDragEnd: () => void
 }) {
   const [hovered, setHovered] = useState(false)
   const commandState = useTerminalStore((s) => s.getWorktreeCommandState(worktree.splitLayout))
@@ -375,6 +476,11 @@ function WorktreeItem({ worktree, isActive, index, onSelect, onDelete }: {
     <div
       role="button"
       tabIndex={0}
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       onClick={onSelect}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect() }}
       onMouseEnter={() => setHovered(true)}
@@ -390,6 +496,7 @@ function WorktreeItem({ worktree, isActive, index, onSelect, onDelete }: {
         cursor: 'pointer',
         textAlign: 'left',
         width: '100%',
+        borderTop: isDragOver ? `2px solid ${COLORS.primaryContainer}` : '2px solid transparent',
         transition: 'background 150ms ease-out',
         position: 'relative',
         animation: `slideDown ${200 + index * 40}ms ease-out`,

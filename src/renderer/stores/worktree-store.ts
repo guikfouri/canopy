@@ -33,6 +33,8 @@ interface WorktreeStore {
   getWorktreesForProject: (projectId: string) => Worktree[]
   updateSplitLayout: (worktreeId: string, layout: SplitNode) => void
   updateWorktreeBranch: (worktreeId: string, branch: string) => void
+  reorderProjects: (fromIndex: number, toIndex: number) => void
+  reorderWorktrees: (projectId: string, fromIndex: number, toIndex: number) => void
   updateNotification: (config: Partial<NotificationConfig>) => void
   toConfig: () => CanopyConfig
   saveConfig: () => void
@@ -178,6 +180,38 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
         w.id === worktreeId ? { ...w, branch } : w
       ),
     }))
+  },
+
+  reorderProjects: (fromIndex, toIndex) => {
+    set((state) => {
+      const projects = [...state.projects]
+      const [moved] = projects.splice(fromIndex, 1)
+      projects.splice(toIndex, 0, moved)
+      return { projects }
+    })
+  },
+
+  reorderWorktrees: (projectId, fromIndex, toIndex) => {
+    set((state) => {
+      // Get indices of this project's worktrees within the full array
+      const projectIndices: number[] = []
+      state.worktrees.forEach((w, i) => {
+        if (w.projectId === projectId) projectIndices.push(i)
+      })
+      if (fromIndex >= projectIndices.length || toIndex >= projectIndices.length) return state
+
+      const worktrees = [...state.worktrees]
+      const actualFrom = projectIndices[fromIndex]
+      const [moved] = worktrees.splice(actualFrom, 1)
+      // Recalculate target after removal
+      const remaining = worktrees.filter(w => w.projectId === projectId)
+      const targetWorktree = remaining[toIndex > fromIndex ? toIndex - 1 : toIndex]
+      const actualTo = targetWorktree
+        ? worktrees.indexOf(targetWorktree) + (toIndex > fromIndex ? 1 : 0)
+        : worktrees.length
+      worktrees.splice(actualTo, 0, moved)
+      return { worktrees }
+    })
   },
 
   updateNotification: (config) => {
