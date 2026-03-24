@@ -38,7 +38,7 @@ Organize your projects into collapsible folders for a cleaner sidebar. Projects 
 - Create folders from the "+" dropdown menu in the sidebar header
 - Drag-and-drop projects into and out of folders
 - Reorder folders and loose projects freely
-- Customizable folder color (auto-assigned from the project palette)
+- Customizable folder and project colors via inline color picker (16-color palette)
 - Right-click context menu to rename or remove folders
 - Removing a folder keeps the projects — they just become loose again
 
@@ -134,6 +134,7 @@ A carefully crafted theme system with dark and light modes.
 - **Dark theme**: deep navy surfaces (`#111125`) with warm amber accents (`#ffb300`)
 - **Light theme**: warm beige (`#faf7f2`) with orange accents
 - **System mode**: follows OS appearance preference
+- **16-color project palette** — click the color indicator on any project or folder to pick a new color
 - 8-level tonal hierarchy for depth — boundaries defined through tonal shifts, not harsh borders
 - Consistent theming across terminal (xterm.js) and editor (Monaco)
 
@@ -376,6 +377,7 @@ npm run preview    # Preview production build
 - [x] Dark & light themes with system mode
 - [x] Session persistence across worktree switches
 - [x] Scrollback buffer replay (100KB)
+- [x] Color picker for projects and folders (16-color palette)
 - [x] Config auto-save & restore
 - [x] Settings panel (theme, font, scrollback, notifications)
 - [x] Linux support (.AppImage, .deb)

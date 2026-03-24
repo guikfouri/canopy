@@ -37,6 +37,8 @@ interface WorktreeStore {
   updateWorktreeBranch: (worktreeId: string, branch: string) => void
   reorderProjects: (fromIndex: number, toIndex: number) => void
   reorderWorktrees: (projectId: string, fromIndex: number, toIndex: number) => void
+  updateProjectColor: (projectId: string, color: string) => void
+  updateFolderColor: (folderId: string, color: string) => void
   toggleWorktreeFlag: (worktreeId: string) => void
   updateNotification: (config: Partial<NotificationConfig>) => void
   addFolder: (name: string) => ProjectFolder
@@ -239,6 +241,25 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
       worktrees.splice(actualTo, 0, moved)
       return { worktrees }
     })
+  },
+
+  updateProjectColor: (projectId, color) => {
+    set((state) => ({
+      projects: state.projects.map(p =>
+        p.id === projectId ? { ...p, color } : p
+      ),
+      worktrees: state.worktrees.map(w =>
+        w.projectId === projectId ? { ...w, color } : w
+      ),
+    }))
+  },
+
+  updateFolderColor: (folderId, color) => {
+    set((state) => ({
+      folders: state.folders.map(f =>
+        f.id === folderId ? { ...f, color } : f
+      ),
+    }))
   },
 
   toggleWorktreeFlag: (worktreeId) => {

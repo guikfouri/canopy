@@ -76,6 +76,14 @@ export const PROJECT_COLORS = [
   '#22D3EE', // cyan
   '#ffd79b', // gold
   '#EC4899', // pink
+  '#F87171', // red
+  '#FBBF24', // yellow
+  '#A3E635', // lime
+  '#2DD4BF', // teal
+  '#60A5FA', // blue
+  '#A78BFA', // violet
+  '#D946EF', // fuchsia
+  '#94A3B8', // slate
 ] as const
 
 export const XTERM_DARK_THEME = {
