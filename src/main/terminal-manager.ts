@@ -159,7 +159,8 @@ interface ManagedTerminal {
 const terminals = new Map<string, ManagedTerminal>()
 
 function getDefaultShell(): string {
-  return process.env.SHELL || '/bin/zsh'
+  if (process.env.SHELL) return process.env.SHELL
+  return process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash'
 }
 
 export function hasTerminal(id: string): boolean {

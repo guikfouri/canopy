@@ -8,13 +8,15 @@ const MIN_WIDTH = 900
 const MIN_HEIGHT = 600
 
 function createWindow(): void {
+  const isMac = process.platform === 'darwin'
+
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
-    titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 12, y: 12 },
+    titleBarStyle: 'hidden',
+    ...(isMac && { trafficLightPosition: { x: 12, y: 12 } }),
     backgroundColor: '#111125',
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),

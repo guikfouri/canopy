@@ -11,7 +11,7 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS-lightgrey.svg?logo=apple)](https://www.apple.com/macos/)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/guikfouri/canopy)
 
 <br/>
 
@@ -61,7 +61,8 @@ A carefully crafted dark theme with deep navy surfaces (`#111125`) and warm ambe
 
 - **Node.js** 18+ and npm
 - **Git** 2.15+ (worktree support)
-- **macOS** (Windows/Linux support planned)
+- **macOS** or **Linux** (Windows support planned)
+- **Linux only:** `build-essential` and `python3` (for native module compilation)
 
 ### Install & Run
 
@@ -83,9 +84,33 @@ npm run dev
 # Build the app
 npm run build
 
-# Package as .dmg / .zip (macOS)
-npx electron-builder
+# Package for current platform
+npm run pack
+
+# Package for a specific platform
+npm run pack:mac     # .dmg / .zip
+npm run pack:linux   # .AppImage / .deb
 ```
+
+### Installing on Linux
+
+**From .AppImage:**
+
+```bash
+chmod +x Canopy-*.AppImage
+./Canopy-*.AppImage
+```
+
+**From .deb (Debian/Ubuntu):**
+
+```bash
+sudo dpkg -i canopy_*_amd64.deb
+```
+
+> **Note:** On Linux, you may need to install build dependencies before `npm install`:
+> ```bash
+> sudo apt install build-essential python3
+> ```
 
 ## How It Works
 
@@ -185,10 +210,10 @@ All workspace state (projects, worktrees, layouts, active selections) is seriali
 
 | Shortcut | Action |
 |----------|--------|
-| `Cmd+D` | Split pane horizontally |
-| `Cmd+Shift+D` | Split pane vertically |
-| `Cmd+T` | New terminal tab |
-| `Cmd+W` | Close active tab |
+| `Cmd/Ctrl+D` | Split pane horizontally |
+| `Cmd/Ctrl+Shift+D` | Split pane vertically |
+| `Cmd/Ctrl+T` | New terminal tab |
+| `Cmd/Ctrl+W` | Close active tab |
 
 ## Project Structure
 
@@ -237,7 +262,8 @@ npm run preview    # Preview production build
 - [x] File explorer with git status
 - [x] Session persistence across worktree switches
 - [x] Config auto-save & restore
-- [ ] Windows & Linux support
+- [x] Linux support
+- [ ] Windows support
 - [ ] Integrated search across worktrees
 - [ ] Custom keybinding configuration
 - [ ] Plugin system
