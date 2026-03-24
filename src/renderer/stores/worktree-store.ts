@@ -35,6 +35,7 @@ interface WorktreeStore {
   updateWorktreeBranch: (worktreeId: string, branch: string) => void
   reorderProjects: (fromIndex: number, toIndex: number) => void
   reorderWorktrees: (projectId: string, fromIndex: number, toIndex: number) => void
+  toggleWorktreeFlag: (worktreeId: string) => void
   updateNotification: (config: Partial<NotificationConfig>) => void
   toConfig: () => CanopyConfig
   saveConfig: () => void
@@ -212,6 +213,14 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
       worktrees.splice(actualTo, 0, moved)
       return { worktrees }
     })
+  },
+
+  toggleWorktreeFlag: (worktreeId) => {
+    set((state) => ({
+      worktrees: state.worktrees.map(w =>
+        w.id === worktreeId ? { ...w, flagged: !w.flagged } : w
+      ),
+    }))
   },
 
   updateNotification: (config) => {

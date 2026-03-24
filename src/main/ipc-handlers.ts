@@ -1,4 +1,4 @@
-import { ipcMain, dialog } from 'electron'
+import { ipcMain, dialog, shell } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import type { CreateTerminalPayload, ResizeTerminalPayload, CreateWorktreePayload } from '../shared/types'
 import * as terminalManager from './terminal-manager'
@@ -131,6 +131,11 @@ export function registerIpcHandlers(): void {
 
     if (result.canceled || !result.filePath) return null
     return result.filePath
+  })
+
+  // ── Shell ──────────────────────────────────────
+  ipcMain.handle(IPC.SHELL_OPEN_EXTERNAL, async (_event, url: string) => {
+    await shell.openExternal(url)
   })
 
   // ── Filesystem ────────────────────────────────
