@@ -31,6 +31,17 @@ You're working on a feature branch. A critical bug comes in. You `git stash`, sw
 
 ## Key Features
 
+### 📁 Project Folders
+
+Organize your projects into collapsible folders for a cleaner sidebar. Projects can live at the root level or be grouped inside folders — your choice.
+
+- Create folders from the "+" dropdown menu in the sidebar header
+- Drag-and-drop projects into and out of folders
+- Reorder folders and loose projects freely
+- Customizable folder color (auto-assigned from the project palette)
+- Right-click context menu to rename or remove folders
+- Removing a folder keeps the projects — they just become loose again
+
 ### 🌲 Git Worktree Isolation
 
 Each branch runs in a completely isolated git worktree. No stashing, no conflicts, no lost work. Your `main` branch and feature branch coexist side by side with independent file systems, terminal sessions, and editor state.
@@ -109,7 +120,8 @@ Terminal sessions survive worktree switches. Switch to another branch, come back
 
 All workspace state is auto-saved to `~/.canopy/config.json` with debounced writes (1.5s), including:
 
-- Projects and worktrees
+- Projects, folders, and worktrees
+- Sidebar ordering (folders and loose projects)
 - Split layouts per worktree
 - Active worktree selection
 - Theme preference
@@ -184,9 +196,9 @@ sudo dpkg -i canopy_*_amd64.deb
 
 ## How It Works
 
-### 1. Add a Project
+### 1. Add a Project (or Folder)
 
-Point Canopy at any git repository. It becomes your **project** — the top-level container for all your work.
+Click the **+** button in the sidebar header. Choose **New Project** to point at a git repo, or **New Folder** to create an organizational group. Drag projects into folders to keep related repos together.
 
 ### 2. Create Worktrees
 
@@ -350,6 +362,7 @@ npm run preview    # Preview production build
 ## Roadmap
 
 - [x] Multi-project support
+- [x] Project folders for sidebar organization
 - [x] Git worktree creation & management
 - [x] Split pane terminal layout
 - [x] Tab groups with terminals & editors

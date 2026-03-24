@@ -3,60 +3,98 @@ import { useWorktreeStore } from '../../stores/worktree-store'
 import { useTerminalStore } from '../../stores/terminal-store'
 import { COLORS } from '../../lib/constants'
 import { ContextMenu } from '../shared/ContextMenu'
-import type { Project, Worktree, CommandState } from '@shared/types'
+import type { Project, Worktree, CommandState, ProjectFolder } from '@shared/types'
 
 export function WorktreeList() {
   const projects = useWorktreeStore((s) => s.projects)
   const worktrees = useWorktreeStore((s) => s.worktrees)
+  const folders = useWorktreeStore((s) => s.folders)
+  const sidebarOrder = useWorktreeStore((s) => s.sidebarOrder)
   const activeId = useWorktreeStore((s) => s.activeWorktreeId)
   const setActive = useWorktreeStore((s) => s.setActive)
   const addWorktree = useWorktreeStore((s) => s.addWorktree)
   const removeWorktree = useWorktreeStore((s) => s.removeWorktree)
-  const reorderProjects = useWorktreeStore((s) => s.reorderProjects)
+  const reorderSidebar = useWorktreeStore((s) => s.reorderSidebar)
   const reorderWorktrees = useWorktreeStore((s) => s.reorderWorktrees)
-
+  const moveProjectToFolder = useWorktreeStore((s) => s.moveProjectToFolder)
+  const reorderProjectsInFolder = useWorktreeStore((s) => s.reorderProjectsInFolder)
   const removeProject = useWorktreeStore((s) => s.removeProject)
   const toggleFlag = useWorktreeStore((s) => s.toggleWorktreeFlag)
+  const removeFolder = useWorktreeStore((s) => s.removeFolder)
+  const renameFolder = useWorktreeStore((s) => s.renameFolder)
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<Worktree | null>(null)
   const [deleteProjectTarget, setDeleteProjectTarget] = useState<Project | null>(null)
 
-  // Project drag state
-  const [projectDragOverIndex, setProjectDragOverIndex] = useState<number | null>(null)
-  const dragProjectId = useRef<string | null>(null)
+  // Sidebar-level drag state
+  const [sidebarDragOverIndex, setSidebarDragOverIndex] = useState<number | null>(null)
+  const dragSidebarId = useRef<string | null>(null)
 
-  const handleProjectDragStart = useCallback((e: React.DragEvent, projectId: string) => {
-    dragProjectId.current = projectId
-    e.dataTransfer.setData('text/project-id', projectId)
+  // Folder drop target state (for dragging projects into folders)
+  const [folderDropTarget, setFolderDropTarget] = useState<string | null>(null)
+
+  const handleSidebarDragStart = useCallback((e: React.DragEvent, itemId: string, itemType: 'project' | 'folder') => {
+    dragSidebarId.current = itemId
+    e.dataTransfer.setData('text/sidebar-item', itemId)
+    e.dataTransfer.setData('text/sidebar-item-type', itemType)
+    // Also set project-id for folder drop detection
+    if (itemType === 'project') {
+      e.dataTransfer.setData('text/project-id', itemId)
+    }
     e.dataTransfer.effectAllowed = 'move'
   }, [])
 
-  const handleProjectDragOver = useCallback((e: React.DragEvent, index: number) => {
-    if (!e.dataTransfer.types.includes('text/project-id')) return
+  const handleSidebarDragOver = useCallback((e: React.DragEvent, index: number) => {
+    if (!e.dataTransfer.types.includes('text/sidebar-item')) return
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
-    setProjectDragOverIndex(index)
+    setSidebarDragOverIndex(index)
   }, [])
 
-  const handleProjectDrop = useCallback((e: React.DragEvent, dropIndex: number) => {
+  const handleSidebarDrop = useCallback((e: React.DragEvent, dropIndex: number) => {
     e.preventDefault()
-    setProjectDragOverIndex(null)
-    const droppedId = e.dataTransfer.getData('text/project-id')
+    setSidebarDragOverIndex(null)
+    const droppedId = e.dataTransfer.getData('text/sidebar-item')
     if (!droppedId) return
-    const fromIndex = projects.findIndex(p => p.id === droppedId)
+    const fromIndex = sidebarOrder.findIndex(item => item.id === droppedId)
     if (fromIndex === -1 || fromIndex === dropIndex) return
     const adjustedIndex = dropIndex > fromIndex ? dropIndex - 1 : dropIndex
-    reorderProjects(fromIndex, adjustedIndex)
-  }, [projects, reorderProjects])
+    reorderSidebar(fromIndex, adjustedIndex)
+  }, [sidebarOrder, reorderSidebar])
 
-  const handleProjectDragEnd = useCallback(() => {
-    dragProjectId.current = null
-    setProjectDragOverIndex(null)
+  const handleSidebarDragEnd = useCallback(() => {
+    dragSidebarId.current = null
+    setSidebarDragOverIndex(null)
+    setFolderDropTarget(null)
+  }, [])
+
+  // Handle dropping a project onto a folder header
+  const handleFolderDrop = useCallback((e: React.DragEvent, folderId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setFolderDropTarget(null)
+    setSidebarDragOverIndex(null)
+    const projectId = e.dataTransfer.getData('text/project-id')
+    if (!projectId) return
+    // Don't do anything if this project is already in this folder
+    const project = projects.find(p => p.id === projectId)
+    if (!project || project.folderId === folderId) return
+    moveProjectToFolder(projectId, folderId)
+  }, [projects, moveProjectToFolder])
+
+  const handleFolderDragOver = useCallback((e: React.DragEvent, folderId: string) => {
+    if (!e.dataTransfer.types.includes('text/project-id')) return
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'move'
+    setFolderDropTarget(folderId)
+    setSidebarDragOverIndex(null)
   }, [])
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; worktree: Worktree } | null>(null)
+  const [folderContextMenu, setFolderContextMenu] = useState<{ x: number; y: number; folder: ProjectFolder } | null>(null)
   const [projectContextMenu, setProjectContextMenu] = useState<{ x: number; y: number; project: Project } | null>(null)
 
   const handleRemoveProject = async (project: Project) => {
@@ -77,7 +115,7 @@ export function WorktreeList() {
     setDeleteProjectTarget(null)
   }
 
-  if (projects.length === 0) {
+  if (sidebarOrder.length === 0 && projects.length === 0) {
     return (
       <div style={{
         padding: '24px 12px',
@@ -152,7 +190,44 @@ export function WorktreeList() {
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        {projects.map((project, index) => {
+        {sidebarOrder.map((item, index) => {
+          if (item.type === 'folder') {
+            const folder = folders.find(f => f.id === item.id)
+            if (!folder) return null
+            const folderProjects = projects.filter(p => p.folderId === folder.id)
+
+            return (
+              <FolderGroup
+                key={folder.id}
+                folder={folder}
+                projects={folderProjects}
+                worktrees={worktrees}
+                activeId={activeId}
+                onSelect={setActive}
+                onCreateWorktree={(project, name) => handleCreateWorktree(project, name)}
+                onDeleteWorktree={setDeleteTarget}
+                // Sidebar-level drag (reorder folders/loose projects)
+                isDragOver={sidebarDragOverIndex === index}
+                isFolderDropTarget={folderDropTarget === folder.id}
+                onDragStart={(e) => handleSidebarDragStart(e, folder.id, 'folder')}
+                onDragOver={(e) => handleSidebarDragOver(e, index)}
+                onDrop={(e) => handleSidebarDrop(e, index)}
+                onDragEnd={handleSidebarDragEnd}
+                onFolderDragOver={(e) => handleFolderDragOver(e, folder.id)}
+                onFolderDrop={(e) => handleFolderDrop(e, folder.id)}
+                onReorderWorktrees={(projectId, fromIdx, toIdx) => reorderWorktrees(projectId, fromIdx, toIdx)}
+                onReorderProjects={(fromIdx, toIdx) => reorderProjectsInFolder(folder.id, fromIdx, toIdx)}
+                onMoveProjectOut={(projectId) => moveProjectToFolder(projectId, null)}
+                onContextMenu={(wt, x, y) => setContextMenu({ x, y, worktree: wt })}
+                onFolderContextMenu={(f, x, y) => setFolderContextMenu({ x, y, folder: f })}
+                onProjectContextMenu={(p, x, y) => setProjectContextMenu({ x, y, project: p })}
+              />
+            )
+          }
+
+          // Loose project
+          const project = projects.find(p => p.id === item.id)
+          if (!project) return null
           const projectWorktrees = worktrees.filter(w => w.projectId === project.id)
 
           return (
@@ -164,11 +239,11 @@ export function WorktreeList() {
               onSelect={setActive}
               onCreateWorktree={(name) => handleCreateWorktree(project, name)}
               onDeleteWorktree={setDeleteTarget}
-              isDragOver={projectDragOverIndex === index}
-              onDragStart={(e) => handleProjectDragStart(e, project.id)}
-              onDragOver={(e) => handleProjectDragOver(e, index)}
-              onDrop={(e) => handleProjectDrop(e, index)}
-              onDragEnd={handleProjectDragEnd}
+              isDragOver={sidebarDragOverIndex === index}
+              onDragStart={(e) => handleSidebarDragStart(e, project.id, 'project')}
+              onDragOver={(e) => handleSidebarDragOver(e, index)}
+              onDrop={(e) => handleSidebarDrop(e, index)}
+              onDragEnd={handleSidebarDragEnd}
               onReorderWorktrees={(fromIdx, toIdx) => reorderWorktrees(project.id, fromIdx, toIdx)}
               onContextMenu={(wt, x, y) => setContextMenu({ x, y, worktree: wt })}
               onProjectContextMenu={(x, y) => setProjectContextMenu({ x, y, project })}
@@ -206,6 +281,18 @@ export function WorktreeList() {
         />
       )}
 
+      {/* Folder context menu */}
+      {folderContextMenu && (
+        <FolderContextMenuWrapper
+          folder={folderContextMenu.folder}
+          x={folderContextMenu.x}
+          y={folderContextMenu.y}
+          onDismiss={() => setFolderContextMenu(null)}
+          onRename={(name) => { renameFolder(folderContextMenu.folder.id, name); setFolderContextMenu(null) }}
+          onDelete={() => { removeFolder(folderContextMenu.folder.id); setFolderContextMenu(null) }}
+        />
+      )}
+
       {/* Project context menu */}
       {projectContextMenu && (
         <ContextMenu
@@ -235,7 +322,306 @@ export function WorktreeList() {
   )
 }
 
-function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd, onReorderWorktrees, onContextMenu, onProjectContextMenu }: {
+// ── Folder Context Menu ──────────────────────────────────
+function FolderContextMenuWrapper({ folder, x, y, onDismiss, onRename, onDelete }: {
+  folder: ProjectFolder
+  x: number
+  y: number
+  onDismiss: () => void
+  onRename: (name: string) => void
+  onDelete: () => void
+}) {
+  const [renaming, setRenaming] = useState(false)
+  const [name, setName] = useState(folder.name)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (renaming) inputRef.current?.focus()
+  }, [renaming])
+
+  if (renaming) {
+    return (
+      <>
+        <div
+          onClick={onDismiss}
+          style={{ position: 'fixed', inset: 0, zIndex: 999 }}
+        />
+        <div style={{
+          position: 'fixed',
+          left: x,
+          top: y,
+          zIndex: 1000,
+          background: COLORS.surfaceContainerHigh,
+          borderRadius: '6px',
+          border: `1px solid ${COLORS.outlineVariant}40`,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+          padding: '6px 10px',
+          minWidth: '160px',
+        }}>
+          <input
+            ref={inputRef}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && name.trim()) onRename(name.trim())
+              if (e.key === 'Escape') onDismiss()
+            }}
+            onBlur={() => { if (name.trim()) onRename(name.trim()); else onDismiss() }}
+            style={{
+              background: COLORS.surfaceContainerLowest,
+              border: `1px solid ${COLORS.outlineVariantStrong}`,
+              borderRadius: '4px',
+              color: COLORS.onSurface,
+              fontSize: '12px',
+              fontFamily: "'Inter', sans-serif",
+              padding: '4px 8px',
+              outline: 'none',
+              width: '100%',
+            }}
+          />
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <ContextMenu
+      x={x}
+      y={y}
+      onDismiss={onDismiss}
+      items={[
+        {
+          label: 'Rename folder',
+          onClick: () => setRenaming(true),
+        },
+        {
+          label: 'Remove folder',
+          danger: true,
+          onClick: onDelete,
+        },
+      ]}
+    />
+  )
+}
+
+// ── Folder Group ──────────────────────────────────────────
+function FolderGroup({ folder, projects, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree, isDragOver, isFolderDropTarget, onDragStart, onDragOver, onDrop, onDragEnd, onFolderDragOver, onFolderDrop, onReorderWorktrees, onReorderProjects, onMoveProjectOut, onContextMenu, onFolderContextMenu, onProjectContextMenu }: {
+  folder: ProjectFolder
+  projects: Project[]
+  worktrees: Worktree[]
+  activeId: string | null
+  onSelect: (id: string) => void
+  onCreateWorktree: (project: Project, name: string) => void
+  onDeleteWorktree: (wt: Worktree) => void
+  isDragOver: boolean
+  isFolderDropTarget: boolean
+  onDragStart: (e: React.DragEvent) => void
+  onDragOver: (e: React.DragEvent) => void
+  onDrop: (e: React.DragEvent) => void
+  onDragEnd: () => void
+  onFolderDragOver: (e: React.DragEvent) => void
+  onFolderDrop: (e: React.DragEvent) => void
+  onReorderWorktrees: (projectId: string, fromIndex: number, toIndex: number) => void
+  onReorderProjects: (fromIndex: number, toIndex: number) => void
+  onMoveProjectOut: (projectId: string) => void
+  onContextMenu: (wt: Worktree, x: number, y: number) => void
+  onFolderContextMenu: (folder: ProjectFolder, x: number, y: number) => void
+  onProjectContextMenu: (project: Project, x: number, y: number) => void
+}) {
+  const [collapsed, setCollapsed] = useState(false)
+  const [headerHovered, setHeaderHovered] = useState(false)
+
+  // Project reorder within folder
+  const [projectDragOverIndex, setProjectDragOverIndex] = useState<number | null>(null)
+  const dragProjectId = useRef<string | null>(null)
+
+  const handleProjectDragStart = useCallback((e: React.DragEvent, projectId: string) => {
+    e.stopPropagation()
+    dragProjectId.current = projectId
+    e.dataTransfer.setData('text/project-id', projectId)
+    e.dataTransfer.setData('text/sidebar-item', projectId)
+    e.dataTransfer.setData('text/sidebar-item-type', 'project')
+    e.dataTransfer.effectAllowed = 'move'
+  }, [])
+
+  const handleProjectDragOver = useCallback((e: React.DragEvent, index: number) => {
+    if (!e.dataTransfer.types.includes('text/project-id')) return
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'move'
+    setProjectDragOverIndex(index)
+  }, [])
+
+  const handleProjectDrop = useCallback((e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setProjectDragOverIndex(null)
+    const droppedId = e.dataTransfer.getData('text/project-id')
+    if (!droppedId) return
+
+    // Check if it's a project from outside this folder
+    const droppedProject = projects.find(p => p.id === droppedId)
+    if (!droppedProject) {
+      // Project from outside — this is handled by folder drop
+      return
+    }
+
+    const fromIndex = projects.findIndex(p => p.id === droppedId)
+    if (fromIndex === -1 || fromIndex === dropIndex) return
+    const adjustedIndex = dropIndex > fromIndex ? dropIndex - 1 : dropIndex
+    onReorderProjects(fromIndex, adjustedIndex)
+  }, [projects, onReorderProjects])
+
+  const handleProjectDragEnd = useCallback(() => {
+    dragProjectId.current = null
+    setProjectDragOverIndex(null)
+  }, [])
+
+  return (
+    <div style={{ animation: 'slideDown 200ms ease-out' }}>
+      {/* Folder header */}
+      <div
+        draggable
+        onDragStart={onDragStart}
+        onDragOver={(e) => {
+          // Allow both sidebar reorder and project-into-folder drop
+          if (e.dataTransfer.types.includes('text/project-id')) {
+            onFolderDragOver(e)
+          } else {
+            onDragOver(e)
+          }
+        }}
+        onDrop={(e) => {
+          if (e.dataTransfer.types.includes('text/project-id')) {
+            onFolderDrop(e)
+          } else {
+            onDrop(e)
+          }
+        }}
+        onDragEnd={onDragEnd}
+        onMouseEnter={() => setHeaderHovered(true)}
+        onMouseLeave={() => setHeaderHovered(false)}
+        onContextMenu={(e) => { e.preventDefault(); onFolderContextMenu(folder, e.clientX, e.clientY) }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          padding: '6px 8px',
+          gap: '6px',
+          cursor: 'pointer',
+          borderRadius: '4px',
+          background: isFolderDropTarget
+            ? COLORS.surfaceContainerHighest
+            : headerHovered
+              ? COLORS.surfaceContainerHigh
+              : 'transparent',
+          borderTop: isDragOver ? `2px solid ${COLORS.primaryContainer}` : '2px solid transparent',
+          border: isFolderDropTarget ? `1px dashed ${COLORS.primaryContainer}` : undefined,
+          borderTopWidth: isDragOver ? '2px' : undefined,
+          transition: 'background 150ms ease-out',
+        }}
+      >
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: COLORS.textMuted,
+            fontSize: '8px',
+            cursor: 'pointer',
+            padding: '0 2px',
+            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+            transition: 'transform 150ms ease-out',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
+            <path d="M2 1.5L6 4L2 6.5V1.5Z" />
+          </svg>
+        </button>
+
+        {/* Folder icon with color */}
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" strokeWidth="1.3" strokeLinecap="round" style={{ flexShrink: 0 }}>
+          <path
+            d="M1.5 3.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-7.5z"
+            stroke={folder.color}
+            fill={`${folder.color}20`}
+          />
+        </svg>
+
+        <span
+          onClick={() => setCollapsed(!collapsed)}
+          style={{
+            flex: 1,
+            color: COLORS.onSurface,
+            fontSize: '13px',
+            fontFamily: "'Inter', sans-serif",
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {folder.name}
+        </span>
+
+        <span style={{
+          color: COLORS.textMuted,
+          fontSize: '10px',
+          fontFamily: "'JetBrains Mono', monospace",
+          marginRight: '2px',
+        }}>
+          {projects.length}
+        </span>
+      </div>
+
+      {/* Projects inside folder */}
+      {!collapsed && (
+        <div style={{ paddingLeft: '8px' }}>
+          {projects.map((project, projectIndex) => {
+            const projectWorktrees = worktrees.filter(w => w.projectId === project.id)
+
+            return (
+              <ProjectGroup
+                key={project.id}
+                project={project}
+                worktrees={projectWorktrees}
+                activeId={activeId}
+                onSelect={onSelect}
+                onCreateWorktree={(name) => onCreateWorktree(project, name)}
+                onDeleteWorktree={onDeleteWorktree}
+                isDragOver={projectDragOverIndex === projectIndex}
+                onDragStart={(e) => handleProjectDragStart(e, project.id)}
+                onDragOver={(e) => handleProjectDragOver(e, projectIndex)}
+                onDrop={(e) => handleProjectDrop(e, projectIndex)}
+                onDragEnd={handleProjectDragEnd}
+                onReorderWorktrees={(fromIdx, toIdx) => onReorderWorktrees(project.id, fromIdx, toIdx)}
+                onContextMenu={onContextMenu}
+                onProjectContextMenu={(x, y) => onProjectContextMenu(project, x, y)}
+                insideFolder
+              />
+            )
+          })}
+
+          {projects.length === 0 && (
+            <div style={{
+              padding: '8px 12px',
+              color: COLORS.textMuted,
+              fontSize: '11px',
+              fontFamily: "'Inter', sans-serif",
+              fontStyle: 'italic',
+            }}>
+              Drag projects here
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Project Group ──────────────────────────────────────────
+function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree, onDeleteWorktree, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd, onReorderWorktrees, onContextMenu, onProjectContextMenu, insideFolder }: {
   project: Project
   worktrees: Worktree[]
   activeId: string | null
@@ -250,6 +636,7 @@ function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree
   onReorderWorktrees: (fromIndex: number, toIndex: number) => void
   onContextMenu: (wt: Worktree, x: number, y: number) => void
   onProjectContextMenu: (x: number, y: number) => void
+  insideFolder?: boolean
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const [headerHovered, setHeaderHovered] = useState(false)
@@ -399,7 +786,7 @@ function ProjectGroup({ project, worktrees, activeId, onSelect, onCreateWorktree
 
       {/* Worktree list under project */}
       {!collapsed && (
-        <div style={{ paddingLeft: '12px' }}>
+        <div style={{ paddingLeft: insideFolder ? '8px' : '12px' }}>
           {worktrees.map((wt, index) => (
             <WorktreeItem
               key={wt.id}
@@ -503,7 +890,6 @@ function getDotStyle(commandState: CommandState, isActive: boolean): React.CSSPr
       return {
         background: COLORS.primaryContainer,
         animation: 'dotPulse 1.5s ease-in-out infinite',
-        // CSS custom property for the animation keyframes
         ['--dot-color' as string]: COLORS.primaryContainer,
       }
     case 'done':

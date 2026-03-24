@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { WorktreeList } from '../workspace/WorktreeList'
 import { useWorktreeStore } from '../../stores/worktree-store'
 import { COLORS } from '../../lib/constants'
@@ -14,14 +14,31 @@ interface SidebarProps {
 
 export function Sidebar({ width, onOpenSettings }: SidebarProps) {
   const addProject = useWorktreeStore((s) => s.addProject)
+  const addFolder = useWorktreeStore((s) => s.addFolder)
   const projects = useWorktreeStore((s) => s.projects)
   const [addHovered, setAddHovered] = useState(false)
   const [settingsHovered, setSettingsHovered] = useState(false)
+  const [showAddMenu, setShowAddMenu] = useState(false)
+  const [showFolderInput, setShowFolderInput] = useState(false)
+  const addMenuRef = useRef<HTMLDivElement>(null)
   const resolved = useThemeStore((s) => s.resolved)
   const toggleTheme = useThemeStore((s) => s.toggleTheme)
   const [themeHovered, setThemeHovered] = useState(false)
 
+  // Close add menu on click outside
+  useEffect(() => {
+    if (!showAddMenu) return
+    const handler = (e: MouseEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
+        setShowAddMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showAddMenu])
+
   const handleAddProject = async () => {
+    setShowAddMenu(false)
     try {
       const path = await window.electronAPI?.canopy?.openDirectoryDialog()
       if (!path) return
@@ -35,6 +52,13 @@ export function Sidebar({ width, onOpenSettings }: SidebarProps) {
     } catch (err) {
       console.error('[Canopy] Failed to add project:', err)
     }
+  }
+
+  const handleAddFolder = (name: string) => {
+    if (name.trim()) {
+      addFolder(name.trim())
+    }
+    setShowFolderInput(false)
   }
 
   return (
@@ -128,34 +152,74 @@ export function Sidebar({ width, onOpenSettings }: SidebarProps) {
         }}>
           Projects
         </span>
-        <button
-          onClick={handleAddProject}
-          onMouseEnter={() => setAddHovered(true)}
-          onMouseLeave={() => setAddHovered(false)}
-          style={{
-            width: '22px',
-            height: '22px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: addHovered ? COLORS.surfaceContainerHighest : 'transparent',
-            border: 'none',
-            borderRadius: '4px',
-            color: addHovered ? COLORS.primary : COLORS.textSecondary,
-            fontSize: '16px',
-            cursor: 'pointer',
-            lineHeight: 1,
-            transition: 'all 150ms ease-out',
-            fontFamily: "'Inter', sans-serif",
-            fontWeight: 300,
-          }}
-          title="Add Project"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <path d="M7 2v10M2 7h10" />
-          </svg>
-        </button>
+        <div ref={addMenuRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowAddMenu(!showAddMenu)}
+            onMouseEnter={() => setAddHovered(true)}
+            onMouseLeave={() => setAddHovered(false)}
+            style={{
+              width: '22px',
+              height: '22px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: (addHovered || showAddMenu) ? COLORS.surfaceContainerHighest : 'transparent',
+              border: 'none',
+              borderRadius: '4px',
+              color: (addHovered || showAddMenu) ? COLORS.primary : COLORS.textSecondary,
+              fontSize: '16px',
+              cursor: 'pointer',
+              lineHeight: 1,
+              transition: 'all 150ms ease-out',
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: 300,
+            }}
+            title="Add project or folder"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M7 2v10M2 7h10" />
+            </svg>
+          </button>
+
+          {showAddMenu && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginTop: '4px',
+              background: COLORS.surfaceContainerHigh,
+              borderRadius: '8px',
+              border: `1px solid ${COLORS.outlineVariantSubtle}`,
+              boxShadow: '0 8px 24px var(--shadow-color)',
+              padding: '4px',
+              zIndex: 100,
+              minWidth: '140px',
+              animation: 'slideDown 150ms ease-out',
+            }}>
+              <AddMenuItem
+                label="New Project"
+                icon={<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="2" y="3" width="10" height="9" rx="1.5" /><path d="M5 3V2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1" /></svg>}
+                onClick={handleAddProject}
+              />
+              <AddMenuItem
+                label="New Folder"
+                icon={<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M1.5 3.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-7.5z" /></svg>}
+                onClick={() => { setShowAddMenu(false); setShowFolderInput(true) }}
+              />
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Folder name input */}
+      {showFolderInput && (
+        <div style={{ padding: '4px 20px', ...NO_DRAG }}>
+          <FolderNameInput
+            onSubmit={handleAddFolder}
+            onCancel={() => setShowFolderInput(false)}
+          />
+        </div>
+      )}
 
       {/* Project & worktree list */}
       <div style={{
@@ -225,6 +289,90 @@ export function Sidebar({ width, onOpenSettings }: SidebarProps) {
           </svg>
         </button>
       </div>
+    </div>
+  )
+}
+
+function AddMenuItem({ label, icon, onClick }: { label: string; icon: React.ReactNode; onClick: () => void }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        width: '100%',
+        padding: '6px 10px',
+        background: hovered ? COLORS.surfaceContainerHighest : 'transparent',
+        border: 'none',
+        borderRadius: '6px',
+        color: hovered ? COLORS.onSurface : COLORS.onSurfaceVariant,
+        fontSize: '12px',
+        fontFamily: "'Inter', sans-serif",
+        cursor: 'pointer',
+        transition: 'all 100ms ease-out',
+        textAlign: 'left',
+      }}
+    >
+      <span style={{ display: 'flex', alignItems: 'center', color: hovered ? COLORS.primary : COLORS.textMuted, transition: 'color 100ms ease-out' }}>
+        {icon}
+      </span>
+      {label}
+    </button>
+  )
+}
+
+function FolderNameInput({ onSubmit, onCancel }: { onSubmit: (name: string) => void; onCancel: () => void }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [value, setValue] = useState('')
+
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && value.trim()) {
+      onSubmit(value)
+    } else if (e.key === 'Escape') {
+      onCancel()
+    }
+  }
+
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      animation: 'slideDown 150ms ease-out',
+    }}>
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke={COLORS.textMuted} strokeWidth="1.3" strokeLinecap="round">
+        <path d="M1.5 3.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-7.5z" />
+      </svg>
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={() => { if (!value.trim()) onCancel() }}
+        placeholder="Folder name..."
+        style={{
+          flex: 1,
+          background: COLORS.surfaceContainerLowest,
+          border: `1px solid ${COLORS.outlineVariantStrong}`,
+          borderRadius: '4px',
+          color: COLORS.onSurface,
+          fontSize: '12px',
+          fontFamily: "'Inter', sans-serif",
+          padding: '4px 8px',
+          outline: 'none',
+          minWidth: 0,
+        }}
+        onFocus={(e) => { e.currentTarget.style.borderColor = COLORS.primaryContainer }}
+        onBlurCapture={(e) => { e.currentTarget.style.borderColor = COLORS.outlineVariantStrong }}
+      />
     </div>
   )
 }

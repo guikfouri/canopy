@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
-import type { Project, Worktree, SplitNode, CanopyConfig, NotificationConfig } from '@shared/types'
+import type { Project, Worktree, SplitNode, CanopyConfig, NotificationConfig, ProjectFolder, SidebarOrderItem } from '@shared/types'
 
 const DEFAULT_NOTIFICATION: NotificationConfig = {
   soundEnabled: true,
@@ -15,6 +15,8 @@ import { useThemeStore } from '../lib/theme'
 interface WorktreeStore {
   projects: Project[]
   worktrees: Worktree[]
+  folders: ProjectFolder[]
+  sidebarOrder: SidebarOrderItem[]
   activeWorktreeId: string | null
   sidebarWidth: number
   terminalScrollback: number
@@ -37,6 +39,12 @@ interface WorktreeStore {
   reorderWorktrees: (projectId: string, fromIndex: number, toIndex: number) => void
   toggleWorktreeFlag: (worktreeId: string) => void
   updateNotification: (config: Partial<NotificationConfig>) => void
+  addFolder: (name: string) => ProjectFolder
+  removeFolder: (id: string) => void
+  renameFolder: (id: string, name: string) => void
+  moveProjectToFolder: (projectId: string, folderId: string | null) => void
+  reorderSidebar: (fromIndex: number, toIndex: number) => void
+  reorderProjectsInFolder: (folderId: string, fromIndex: number, toIndex: number) => void
   toConfig: () => CanopyConfig
   saveConfig: () => void
 }
@@ -47,6 +55,8 @@ let _isLoadingConfig = false
 export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((set, get) => ({
   projects: [],
   worktrees: [],
+  folders: [],
+  sidebarOrder: [],
   activeWorktreeId: null,
   sidebarWidth: 220,
   terminalScrollback: 10_000,
@@ -57,9 +67,23 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
   loadFromConfig: (config: CanopyConfig) => {
     _isLoadingConfig = true
     useThemeStore.getState().init(config.theme ?? 'system')
+
+    const projects = config.projects || []
+    const folders = config.folders || []
+
+    // Migration: generate sidebarOrder from existing projects if missing
+    let sidebarOrder = config.sidebarOrder
+    if (!sidebarOrder || sidebarOrder.length === 0) {
+      sidebarOrder = projects
+        .filter(p => !p.folderId)
+        .map(p => ({ type: 'project' as const, id: p.id }))
+    }
+
     set({
-      projects: config.projects || [],
+      projects,
       worktrees: config.worktrees || [],
+      folders,
+      sidebarOrder,
       activeWorktreeId: config.activeWorktreeId,
       sidebarWidth: config.sidebarWidth,
       terminalScrollback: config.terminalScrollback ?? 10_000,
@@ -98,6 +122,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
     set((s) => ({
       projects: [...s.projects, project],
       worktrees: [...s.worktrees, worktree],
+      sidebarOrder: [...s.sidebarOrder, { type: 'project' as const, id: project.id }],
       activeWorktreeId: worktree.id,
     }))
 
@@ -108,10 +133,11 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
     set((state) => {
       const worktrees = state.worktrees.filter(w => w.projectId !== id)
       const projects = state.projects.filter(p => p.id !== id)
+      const sidebarOrder = state.sidebarOrder.filter(item => !(item.type === 'project' && item.id === id))
       const activeWorktreeId = state.worktrees.find(w => w.id === state.activeWorktreeId)?.projectId === id
         ? (worktrees[0]?.id || null)
         : state.activeWorktreeId
-      return { projects, worktrees, activeWorktreeId }
+      return { projects, worktrees, sidebarOrder, activeWorktreeId }
     })
   },
 
@@ -229,6 +255,105 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
     }))
   },
 
+  addFolder: (name: string) => {
+    const state = get()
+    const colorIndex = (state.projects.length + state.folders.length) % PROJECT_COLORS.length
+    const folder: ProjectFolder = {
+      id: uuid(),
+      name,
+      color: PROJECT_COLORS[colorIndex],
+      createdAt: new Date().toISOString(),
+    }
+    set((s) => ({
+      folders: [...s.folders, folder],
+      sidebarOrder: [...s.sidebarOrder, { type: 'folder' as const, id: folder.id }],
+    }))
+    return folder
+  },
+
+  removeFolder: (id: string) => {
+    set((state) => {
+      // Projects inside this folder become loose — add them to sidebarOrder where the folder was
+      const folderIndex = state.sidebarOrder.findIndex(item => item.type === 'folder' && item.id === id)
+      const looseProjects: SidebarOrderItem[] = state.projects
+        .filter(p => p.folderId === id)
+        .map(p => ({ type: 'project' as const, id: p.id }))
+
+      const sidebarOrder = [...state.sidebarOrder]
+      sidebarOrder.splice(folderIndex, 1, ...looseProjects)
+
+      return {
+        folders: state.folders.filter(f => f.id !== id),
+        projects: state.projects.map(p => p.folderId === id ? { ...p, folderId: undefined } : p),
+        sidebarOrder,
+      }
+    })
+  },
+
+  renameFolder: (id: string, name: string) => {
+    set((state) => ({
+      folders: state.folders.map(f => f.id === id ? { ...f, name } : f),
+    }))
+  },
+
+  moveProjectToFolder: (projectId: string, folderId: string | null) => {
+    set((state) => {
+      const project = state.projects.find(p => p.id === projectId)
+      if (!project) return state
+
+      const wasLoose = !project.folderId
+      const becomingLoose = folderId === null
+
+      let sidebarOrder = [...state.sidebarOrder]
+
+      if (wasLoose && !becomingLoose) {
+        // Moving from root into a folder — remove from sidebarOrder
+        sidebarOrder = sidebarOrder.filter(item => !(item.type === 'project' && item.id === projectId))
+      } else if (!wasLoose && becomingLoose) {
+        // Moving from folder to root — add to sidebarOrder at the end
+        sidebarOrder = [...sidebarOrder, { type: 'project' as const, id: projectId }]
+      }
+      // folder-to-folder: sidebarOrder doesn't change (project is not in it)
+
+      return {
+        projects: state.projects.map(p =>
+          p.id === projectId ? { ...p, folderId: folderId ?? undefined } : p
+        ),
+        sidebarOrder,
+      }
+    })
+  },
+
+  reorderSidebar: (fromIndex: number, toIndex: number) => {
+    set((state) => {
+      const sidebarOrder = [...state.sidebarOrder]
+      const [moved] = sidebarOrder.splice(fromIndex, 1)
+      sidebarOrder.splice(toIndex, 0, moved)
+      return { sidebarOrder }
+    })
+  },
+
+  reorderProjectsInFolder: (folderId: string, fromIndex: number, toIndex: number) => {
+    set((state) => {
+      // Get projects in this folder, reorder them, then update the full projects array
+      const folderProjects = state.projects.filter(p => p.folderId === folderId)
+      if (fromIndex >= folderProjects.length || toIndex >= folderProjects.length) return state
+
+      const reordered = [...folderProjects]
+      const [moved] = reordered.splice(fromIndex, 1)
+      reordered.splice(toIndex, 0, moved)
+
+      // Rebuild the projects array maintaining the order of non-folder projects
+      const otherProjects = state.projects.filter(p => p.folderId !== folderId)
+      // Insert folder projects back at the position of the first folder project
+      const firstIdx = state.projects.findIndex(p => p.folderId === folderId)
+      const projects = [...otherProjects]
+      projects.splice(firstIdx, 0, ...reordered)
+
+      return { projects }
+    })
+  },
+
   toConfig: () => {
     const state = get()
     return {
@@ -236,6 +361,8 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
       theme: useThemeStore.getState().preference,
       projects: state.projects,
       worktrees: state.worktrees,
+      folders: state.folders,
+      sidebarOrder: state.sidebarOrder,
       activeWorktreeId: state.activeWorktreeId,
       sidebarWidth: state.sidebarWidth,
       fileExplorerWidth: 280,
@@ -257,7 +384,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
 let _saveTimer: ReturnType<typeof setTimeout> | null = null
 
 useWorktreeStore.subscribe(
-  (s) => ({ projects: s.projects, worktrees: s.worktrees, activeWorktreeId: s.activeWorktreeId, sidebarWidth: s.sidebarWidth, terminalScrollback: s.terminalScrollback, terminalFontSize: s.terminalFontSize, notification: s.notification }),
+  (s) => ({ projects: s.projects, worktrees: s.worktrees, folders: s.folders, sidebarOrder: s.sidebarOrder, activeWorktreeId: s.activeWorktreeId, sidebarWidth: s.sidebarWidth, terminalScrollback: s.terminalScrollback, terminalFontSize: s.terminalFontSize, notification: s.notification }),
   () => {
     if (_isLoadingConfig) return
     if (_saveTimer) clearTimeout(_saveTimer)
