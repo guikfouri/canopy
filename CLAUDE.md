@@ -167,3 +167,4 @@ Version is tracked in `package.json` → `version` field. Update it when creatin
 - Simplicity First: Make every change as simple as possible. Impact minimal code.
 - No Laziness: Find root causes. No temporary fixes. Senior developer standards.
 - Minimal Impact: Only touch what's necessary. No side effects with new bugs.
+- Documentation: Every new feature or significant change MUST include updates to README.md and any relevant documentation.
