@@ -85,7 +85,8 @@
         "AppImage",
         "deb"
       ],
-      "category": "Development"
+      "category": "Development",
+      "icon": "resources/icons"
     }
   }
 }
