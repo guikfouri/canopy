@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Terminal workspace manager with split panes and git worktree isolation",
+  "author": {
+    "name": "Guilherme",
+    "email": "guiokfouri@gmail.com"
+  },
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
