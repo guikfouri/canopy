@@ -46,7 +46,7 @@ export function Sidebar({ width, onOpenSettings }: SidebarProps) {
       // Prevent duplicate projects with the same path
       if (projects.some((p) => p.path === path)) return
 
-      const branch = await window.electronAPI?.canopy?.getBranch(path).catch(() => 'main') ?? 'main'
+      const branch = await window.electronAPI?.canopy?.getBranch(path).catch(() => '') ?? ''
 
       addProject(path, branch)
     } catch (err) {

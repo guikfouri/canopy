@@ -57,26 +57,30 @@ export function TopBar() {
         {worktree.name}
       </span>
 
-      <span style={{
-        color: COLORS.textMuted,
-        fontSize: '11px',
-        margin: '0 2px',
-      }}>
-        ›
-      </span>
+      {worktree.branch && (
+        <>
+          <span style={{
+            color: COLORS.textMuted,
+            fontSize: '11px',
+            margin: '0 2px',
+          }}>
+            ›
+          </span>
 
-      <span style={{
-        color: COLORS.textSecondary,
-        fontSize: '11px',
-        fontFamily: "'JetBrains Mono', monospace",
-      }}>
-        {worktree.branch}
-      </span>
+          <span style={{
+            color: COLORS.textSecondary,
+            fontSize: '11px',
+            fontFamily: "'JetBrains Mono', monospace",
+          }}>
+            {worktree.branch}
+          </span>
+        </>
+      )}
 
       <div style={{ flex: 1 }} />
 
       {/* Branch selector */}
-      <BranchSelector worktree={worktree} />
+      {worktree.branch && <BranchSelector worktree={worktree} />}
     </div>
   )
 }

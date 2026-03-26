@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { MainArea } from './MainArea'
@@ -14,8 +14,35 @@ type RightPanelTab = 'files' | 'changes' | 'checks'
 export function AppShell() {
   const [fileExplorerOpen, setFileExplorerOpen] = useState(true)
   const [fileExplorerWidth, setFileExplorerWidth] = useState(280)
+  const [sidebarWidth, setSidebarWidth] = useState(240)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const worktree = useWorktreeStore((s) => s.getActive())
+  const dragging = useRef(false)
+
+  const handleSidebarResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragging.current = true
+    const startX = e.clientX
+    const startWidth = sidebarWidth
+
+    const onMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.min(480, Math.max(160, startWidth + (e.clientX - startX)))
+      setSidebarWidth(newWidth)
+    }
+
+    const onMouseUp = () => {
+      dragging.current = false
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  }, [sidebarWidth])
 
   return (
     <div style={{
@@ -32,7 +59,8 @@ export function AppShell() {
         flex: 1,
         overflow: 'hidden',
       }}>
-        <Sidebar width={240} onOpenSettings={() => setSettingsOpen(true)} />
+        <Sidebar width={sidebarWidth} onOpenSettings={() => setSettingsOpen(true)} />
+        <SidebarResizeHandle onMouseDown={handleSidebarResizeStart} />
         <MainArea
           onToggleFileExplorer={() => setFileExplorerOpen(!fileExplorerOpen)}
           fileExplorerOpen={fileExplorerOpen}
@@ -142,6 +170,25 @@ function PanelTab({ label, badge, active, onClick }: {
         </span>
       )}
     </button>
+  )
+}
+
+function SidebarResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => void }) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        width: '4px',
+        cursor: 'col-resize',
+        background: hovered ? COLORS.outlineVariantSubtle : 'transparent',
+        transition: 'background 150ms ease-out',
+        flexShrink: 0,
+      }}
+    />
   )
 }
 

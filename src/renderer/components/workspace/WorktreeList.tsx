@@ -1053,18 +1053,20 @@ function WorktreeItem({ worktree, isActive, index, onSelect, onDelete, isDragOve
         }}>
           {worktree.name}
         </div>
-        <div style={{
-          color: COLORS.textMuted,
-          fontSize: '10px',
-          fontFamily: "'JetBrains Mono', monospace",
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          lineHeight: 1.4,
-          marginTop: '1px',
-        }}>
-          {worktree.branch}
-        </div>
+        {worktree.branch && (
+          <div style={{
+            color: COLORS.textMuted,
+            fontSize: '10px',
+            fontFamily: "'JetBrains Mono', monospace",
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.4,
+            marginTop: '1px',
+          }}>
+            {worktree.branch}
+          </div>
+        )}
       </div>
 
       {/* Flag indicator — red asterisk */}

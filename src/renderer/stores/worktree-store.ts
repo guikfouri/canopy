@@ -96,7 +96,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
     _isLoadingConfig = false
   },
 
-  addProject: (path: string, branch: string = 'main') => {
+  addProject: (path: string, branch: string = '') => {
     const state = get()
     const colorIndex = state.projects.length % PROJECT_COLORS.length
     const name = path.split('/').pop() || 'project'
@@ -112,7 +112,7 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
     const worktree: Worktree = {
       id: uuid(),
       projectId: project.id,
-      name: branch,
+      name: branch || name,
       worktreePath: path,
       branch,
       color: PROJECT_COLORS[colorIndex],
