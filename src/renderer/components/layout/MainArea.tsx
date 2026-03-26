@@ -208,13 +208,15 @@ function TerminalTabBar({ worktree, focusedTerminalId, onToggleFileExplorer, fil
         {worktree.name}
       </span>
 
-      <span style={{
-        color: COLORS.textMuted,
-        fontSize: '11px',
-        fontFamily: "'JetBrains Mono', monospace",
-      }}>
-        {worktree.branch}
-      </span>
+      {worktree.branch && (
+        <span style={{
+          color: COLORS.textMuted,
+          fontSize: '11px',
+          fontFamily: "'JetBrains Mono', monospace",
+        }}>
+          {worktree.branch}
+        </span>
+      )}
 
       <div style={{ flex: 1 }} />
 
