@@ -3,8 +3,27 @@ import path from 'path'
 import { app } from 'electron'
 import type { CanopyConfig } from '../shared/types'
 
-const CONFIG_DIR = path.join(app.getPath('home'), '.canopy')
+// Use platform-appropriate app data dir:
+// Windows:  %APPDATA%\Canopy
+// macOS:    ~/Library/Application Support/Canopy
+// Linux:    ~/.config/Canopy
+const CONFIG_DIR = path.join(app.getPath('userData'), 'canopy')
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
+
+// One-time migration: copy config from old ~/.canopy location if new path doesn't exist yet
+function migrateConfigIfNeeded(): void {
+  if (fs.existsSync(CONFIG_FILE)) return
+  const legacyFile = path.join(app.getPath('home'), '.canopy', 'config.json')
+  if (!fs.existsSync(legacyFile)) return
+  try {
+    fs.mkdirSync(CONFIG_DIR, { recursive: true })
+    fs.copyFileSync(legacyFile, CONFIG_FILE)
+  } catch {
+    // Migration failed — not fatal, will start with default config
+  }
+}
+
+migrateConfigIfNeeded()
 
 const DEFAULT_CONFIG: CanopyConfig = {
   version: 1,
