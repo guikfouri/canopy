@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "pack": "electron-vite build && electron-builder --config",
     "pack:mac": "electron-vite build && electron-builder --mac --config",
-    "pack:linux": "electron-vite build && electron-builder --linux --config"
+    "pack:linux": "electron-vite build && electron-builder --linux --config",
+    "pack:win": "electron-vite build && electron-builder --win --config"
   },
   "dependencies": {
     "@lydell/node-pty": "^1.1.0",
@@ -87,6 +88,16 @@
       ],
       "category": "Development",
       "icon": "resources/icons"
+    },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
   }
 }
