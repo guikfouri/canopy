@@ -1,7 +1,13 @@
 import { app } from 'electron'
-import path from 'path'
-import fs from 'fs'
-import type { CreateTerminalPayload, ResizeTerminalPayload, CommandState } from '../shared/types'
+import type { CreateTerminalPayload, ResizeTerminalPayload, CommandState, ShellType } from '../shared/types'
+import { UnixShellProvider } from './shell-providers/unix-shell-provider'
+import { WindowsShellProvider } from './shell-providers/windows-shell-provider'
+import type { ShellProvider } from './shell-providers/shell-provider.interface'
+
+const shellProvider: ShellProvider =
+  process.platform === 'win32'
+    ? new WindowsShellProvider()
+    : new UnixShellProvider()
 
 // ── Diagnostic logging (prefix all with [canopy-term]) ──────────
 const DEBUG = !app.isPackaged
@@ -72,66 +78,6 @@ function parseOsc133(data: string): Osc133Event[] {
   return events
 }
 
-// ── Shell integration path resolution ────────────────────────────
-
-function getShellIntegrationDir(): string {
-  if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'shell-integration')
-  }
-  // In dev, app.getAppPath() returns the project root reliably
-  const dir = path.join(app.getAppPath(), 'src', 'main', 'shell-integration')
-  if (!fs.existsSync(dir)) {
-    // Fallback: resolve from __dirname (out/main/) up to project root
-    const fallback = path.join(__dirname, '..', '..', 'src', 'main', 'shell-integration')
-    log('shell-integration dir (primary missing, using fallback):', fallback, '| exists:', fs.existsSync(fallback))
-    return fallback
-  }
-  log('shell-integration dir:', dir)
-  return dir
-}
-
-function getZshBootstrapDir(): string {
-  return path.join(getShellIntegrationDir(), 'zsh-bootstrap')
-}
-
-type ShellType = 'zsh' | 'bash' | 'fish' | 'unknown'
-
-function detectShellType(shellPath: string): ShellType {
-  const base = path.basename(shellPath)
-  if (base === 'zsh' || base.startsWith('zsh-')) return 'zsh'
-  if (base === 'bash' || base.startsWith('bash-')) return 'bash'
-  if (base === 'fish' || base.startsWith('fish-')) return 'fish'
-  return 'unknown'
-}
-
-function buildShellEnv(
-  shellType: ShellType,
-  baseEnv: Record<string, string | undefined>,
-): Record<string, string | undefined> {
-  const env = { ...baseEnv }
-  const integrationDir = getShellIntegrationDir()
-
-  switch (shellType) {
-    case 'zsh': {
-      env.CANOPY_ORIGINAL_ZDOTDIR = env.ZDOTDIR || ''
-      env.ZDOTDIR = getZshBootstrapDir()
-      env.CANOPY_SHELL_INTEGRATION_DIR = integrationDir
-      break
-    }
-    case 'bash': {
-      env.CANOPY_SHELL_INTEGRATION_DIR = integrationDir
-      // --rcfile is used in args, no BASH_ENV to avoid injecting into subshells
-      break
-    }
-    case 'fish': {
-      env.CANOPY_SHELL_INTEGRATION_DIR = integrationDir
-      break
-    }
-  }
-
-  return env
-}
-
 // ── Terminal instance management ─────────────────────────────────
 
 interface ManagedTerminal {
@@ -154,14 +100,10 @@ interface ManagedTerminal {
   hasOscSupport: boolean
   lastCommandExitCode: number | undefined
   oscBuffer: string // Buffer for partial OSC sequences across chunks
+  shellType: ShellType
 }
 
 const terminals = new Map<string, ManagedTerminal>()
-
-function getDefaultShell(): string {
-  if (process.env.SHELL) return process.env.SHELL
-  return process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash'
-}
 
 export function hasTerminal(id: string): boolean {
   return terminals.has(id)
@@ -185,8 +127,7 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
   if (terminals.has(payload.id)) return
 
   const nodePty = await loadPty()
-  const shell = getDefaultShell()
-  const shellType = detectShellType(shell)
+  const shellInfo = shellProvider.detect()
   const disableIntegration = process.env.CANOPY_DISABLE_SHELL_INTEGRATION === '1'
 
   const baseEnv: Record<string, string | undefined> = {
@@ -196,46 +137,20 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
   }
   delete baseEnv.CLAUDECODE
 
-  const env = disableIntegration ? baseEnv : buildShellEnv(shellType, baseEnv)
+  const integrationEnv = disableIntegration ? {} : shellProvider.getIntegrationEnv(shellInfo)
+  const env = { ...baseEnv, ...integrationEnv }
 
-  // Shell-specific args for integration injection
-  const args: string[] = []
-  if (!disableIntegration) {
-    const integrationDir = getShellIntegrationDir()
-    if (shellType === 'bash') {
-      args.push('--rcfile', path.join(integrationDir, 'canopy-integration.bash'))
-    } else if (shellType === 'fish') {
-      args.push('-C', `source ${path.join(integrationDir, 'canopy-integration.fish')}`)
-    }
-  }
+  const args: string[] = disableIntegration ? [] : shellProvider.getIntegrationArgs(shellInfo)
 
   log('createTerminal:', {
     id: payload.id,
-    shell,
-    shellType,
+    shell: shellInfo.executable,
+    shellType: shellInfo.type,
     disableIntegration,
     args,
-    ZDOTDIR: env.ZDOTDIR,
-    CANOPY_SHELL_INTEGRATION_DIR: env.CANOPY_SHELL_INTEGRATION_DIR,
-    CANOPY_ORIGINAL_ZDOTDIR: env.CANOPY_ORIGINAL_ZDOTDIR,
   })
 
-  // Verify shell integration files exist
-  if (!disableIntegration) {
-    const integrationDir = getShellIntegrationDir()
-    const zshScript = path.join(integrationDir, 'canopy-integration.zsh')
-    const bootstrapDir = getZshBootstrapDir()
-    const bootstrapRc = path.join(bootstrapDir, '.zshrc')
-    const bootstrapEnv = path.join(bootstrapDir, '.zshenv')
-    log('file check:', {
-      zshScript: fs.existsSync(zshScript),
-      bootstrapDir: fs.existsSync(bootstrapDir),
-      bootstrapRc: fs.existsSync(bootstrapRc),
-      bootstrapEnv: fs.existsSync(bootstrapEnv),
-    })
-  }
-
-  const ptyProcess = nodePty.spawn(shell, args, {
+  const ptyProcess = nodePty.spawn(shellInfo.executable, args, {
     name: 'xterm-256color',
     cols: payload.cols || 80,
     rows: payload.rows || 24,
@@ -268,6 +183,7 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
     hasOscSupport: false,
     lastCommandExitCode: undefined,
     oscBuffer: '',
+    shellType: shellInfo.type,
   }
 
   function setCommandState(state: CommandState, exitCode?: number) {
@@ -508,4 +424,8 @@ export function destroyAll(): void {
   for (const [id] of terminals) {
     destroyTerminal(id)
   }
+}
+
+export function getTerminalShellType(id: string): ShellType {
+  return terminals.get(id)?.shellType ?? 'unknown'
 }
