@@ -55,6 +55,10 @@ export function registerIpcHandlers(): void {
     return { exists: true, scrollback, exited: exitInfo.exited, exitCode: exitInfo.exitCode }
   })
 
+  ipcMain.handle(IPC.TERMINAL_GET_SHELL_TYPE, (_event, id: string) => {
+    return terminalManager.getTerminalShellType(id)
+  })
+
   ipcMain.on(IPC.TERMINAL_INPUT, (_event, { id, data }: { id: string; data: string }) => {
     terminalManager.writeToTerminal(id, data)
   })
