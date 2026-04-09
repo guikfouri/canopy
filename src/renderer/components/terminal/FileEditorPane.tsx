@@ -57,6 +57,8 @@ function getLanguageFromPath(filePath: string): string {
     yaml: 'yaml', yml: 'yaml',
     toml: 'ini',
     sh: 'shell', bash: 'shell', zsh: 'shell',
+    bat: 'bat', cmd: 'bat',
+    ps1: 'powershell', psm1: 'powershell', psd1: 'powershell',
     sql: 'sql',
     xml: 'xml',
     svg: 'xml',
