@@ -8,6 +8,7 @@ export const IPC = {
   TERMINAL_OUTPUT: 'terminal:output',
   TERMINAL_EXIT: 'terminal:exit',
   TERMINAL_COMMAND_STATE: 'terminal:command-state',
+  TERMINAL_GET_SHELL_TYPE: 'terminal:get-shell-type',
 
   // Worktree
   WORKTREE_CREATE: 'worktree:create',

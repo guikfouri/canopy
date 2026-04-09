@@ -28,6 +28,8 @@ export type SplitNode = TabGroupNode | SplitNodeInternal
 // ── Terminal Session ───────────────────────────────
 export type CommandState = 'idle' | 'busy' | 'done'
 
+export type ShellType = 'zsh' | 'bash' | 'fish' | 'pwsh' | 'powershell' | 'cmd' | 'unknown'
+
 export interface TerminalSession {
   id: string
   worktreeId: string
