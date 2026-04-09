@@ -26,6 +26,7 @@ declare global {
         onOutput: (cb: (data: { id: string; data: string }) => void) => () => void
         onExit: (cb: (data: { id: string; code: number }) => void) => () => void
         onCommandState: (cb: (data: { id: string; state: import('@shared/types').CommandState; exitCode?: number }) => void) => () => void
+        getShellType: (id: string) => Promise<import('@shared/types').ShellType>
       }
       canopy: {
         loadConfig: () => Promise<import('@shared/types').CanopyConfig>
@@ -59,9 +60,18 @@ interface TerminalPaneProps {
   onFocus: () => void
 }
 
-/** Shell-escape a file path (escape spaces and special chars) */
-function shellEscape(path: string): string {
-  return path.replace(/([\\  !"#$&'()*,:;<>?@[\]^`{|}~])/g, '\\$1')
+/** Shell-escape a file path based on the active shell type */
+function shellEscape(filePath: string, shellType: import('@shared/types').ShellType): string {
+  if (shellType === 'pwsh' || shellType === 'powershell') {
+    // PowerShell: single-quoted string, escape internal single quotes by doubling
+    return `'${filePath.replace(/'/g, "''")}'`
+  }
+  if (shellType === 'cmd') {
+    // CMD: double-quoted string
+    return `"${filePath.replace(/"/g, '\\"')}"`
+  }
+  // POSIX (bash/zsh/fish/unknown): backslash-escape special characters
+  return filePath.replace(/([\\  !"#$&'()*,:;<>?@[\]^`{|}~])/g, '\\$1')
 }
 
 export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPaneProps) {
@@ -105,7 +115,7 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
       }
     }
 
-    const onDrop = (e: DragEvent) => {
+    const onDrop = async (e: DragEvent) => {
       e.preventDefault()
       e.stopPropagation()
       setIsDragOver(false)
@@ -114,11 +124,12 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
       const files = Array.from(e.dataTransfer?.files ?? [])
       if (files.length === 0) return
 
-      // Use Electron's webUtils.getPathForFile for reliable path resolution
+      const shellType = await window.electronAPI.terminal.getShellType(terminalId)
+
       const paths = files
         .map((f) => {
           const filePath = window.electronAPI.getPathForFile(f)
-          return shellEscape(filePath)
+          return shellEscape(filePath, shellType)
         })
         .filter(Boolean)
         .join(' ')
