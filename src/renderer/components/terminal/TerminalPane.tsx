@@ -6,6 +6,7 @@ import { COLORS, getXtermTheme } from '../../lib/constants'
 import { useThemeStore } from '../../lib/theme'
 import { useTerminalStore } from '../../stores/terminal-store'
 import { useWorktreeStore } from '../../stores/worktree-store'
+import { ContextMenu } from '../shared/ContextMenu'
 import '@xterm/xterm/css/xterm.css'
 
 declare global {
@@ -80,6 +81,7 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
   const fitAddonRef = useRef<FitAddon | null>(null)
   const createdRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
   const dragCounterRef = useRef(0)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const terminalScrollback = useWorktreeStore((s) => s.terminalScrollback)
@@ -177,6 +179,27 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
     }))
 
     terminal.open(containerRef.current)
+
+    // Copy on select (replicates copyOnSelect, removed in xterm.js v5)
+    terminal.onSelectionChange(() => {
+      const sel = terminal.getSelection()
+      if (sel) navigator.clipboard.writeText(sel)
+    })
+
+    terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.code === 'KeyC') {
+        const sel = terminal.getSelection()
+        if (sel) navigator.clipboard.writeText(sel)
+        return false
+      }
+      if (e.ctrlKey && e.shiftKey && e.code === 'KeyV') {
+        navigator.clipboard.readText().then((text) => {
+          window.electronAPI.terminal.write(terminalId, text)
+        })
+        return false
+      }
+      return true
+    })
 
     terminal.onData((data) => {
       window.electronAPI.terminal.write(terminalId, data)
@@ -280,6 +303,10 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
     <div
       ref={wrapperRef}
       onClick={onFocus}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        setContextMenu({ x: e.clientX, y: e.clientY })
+      }}
       style={{
         width: '100%',
         height: '100%',
@@ -305,6 +332,36 @@ export function TerminalPane({ terminalId, cwd, isFocused, onFocus }: TerminalPa
           transition: 'opacity 150ms ease-out',
         }}
       />
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onDismiss={() => setContextMenu(null)}
+          items={[
+            ...(terminalRef.current?.hasSelection()
+              ? [{
+                  label: 'Copy',
+                  shortcut: 'Ctrl+Shift+C',
+                  onClick: () => {
+                    const sel = terminalRef.current?.getSelection()
+                    if (sel) navigator.clipboard.writeText(sel)
+                    setContextMenu(null)
+                  },
+                }]
+              : []),
+            {
+              label: 'Paste',
+              shortcut: 'Ctrl+Shift+V',
+              onClick: () => {
+                navigator.clipboard.readText().then((text) => {
+                  window.electronAPI.terminal.write(terminalId, text)
+                })
+                setContextMenu(null)
+              },
+            },
+          ]}
+        />
+      )}
     </div>
   )
 }
