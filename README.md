@@ -11,7 +11,7 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/guikfouri/canopy)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](https://github.com/guikfouri/canopy)
 
 <br/>
 
@@ -144,8 +144,9 @@ A carefully crafted theme system with dark and light modes.
 
 - **Node.js** 18+ and npm
 - **Git** 2.15+ (worktree support)
-- **macOS** or **Linux** (Windows support planned)
+- **macOS**, **Linux**, or **Windows 10+**
 - **Linux only:** `build-essential` and `python3` (for native module compilation)
+- **Windows 10+** with PowerShell Core (`pwsh`) recommended for full shell integration
 
 ### Install & Run
 
@@ -173,6 +174,7 @@ npm run pack
 # Package for a specific platform
 npm run pack:mac     # .dmg / .zip
 npm run pack:linux   # .AppImage / .deb
+npm run pack:win      # .exe NSIS installer (Windows)
 ```
 
 ### Installing on Linux
@@ -194,6 +196,14 @@ sudo dpkg -i canopy_*_amd64.deb
 > ```bash
 > sudo apt install build-essential python3
 > ```
+
+### Installing on Windows
+
+**From .exe installer:**
+
+Run `Canopy-Setup-*.exe` and follow the installation wizard. Creates Start Menu and Desktop shortcuts.
+
+> **Note:** For best experience, install [PowerShell Core](https://github.com/PowerShell/PowerShell) (`pwsh`). Canopy auto-detects it and enables full shell integration (command state tracking, idle/busy indicators). Windows PowerShell (`powershell.exe`) and `cmd.exe` work with a basic fallback.
 
 ## How It Works
 
@@ -381,7 +391,7 @@ npm run preview    # Preview production build
 - [x] Config auto-save & restore
 - [x] Settings panel (theme, font, scrollback, notifications)
 - [x] Linux support (.AppImage, .deb)
-- [ ] Windows support
+- [x] Windows support
 - [ ] Integrated search across worktrees
 - [ ] Custom keybinding configuration
 - [ ] Plugin system

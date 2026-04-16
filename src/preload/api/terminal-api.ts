@@ -1,6 +1,6 @@
 import { ipcRenderer } from 'electron'
 import { IPC } from '../../shared/ipc-channels'
-import type { CreateTerminalPayload, ResizeTerminalPayload, CommandState } from '../../shared/types'
+import type { CreateTerminalPayload, ResizeTerminalPayload, CommandState, ShellType } from '../../shared/types'
 
 export interface AttachResult {
   exists: boolean
@@ -42,4 +42,7 @@ export const terminalApi = {
     ipcRenderer.on(IPC.TERMINAL_COMMAND_STATE, handler)
     return () => ipcRenderer.removeListener(IPC.TERMINAL_COMMAND_STATE, handler)
   },
+
+  getShellType: (id: string): Promise<ShellType> =>
+    ipcRenderer.invoke(IPC.TERMINAL_GET_SHELL_TYPE, id),
 }

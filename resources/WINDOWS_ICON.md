@@ -1,0 +1,1 @@
+Windows build requires resources/icon.ico (256x256 multi-resolution ICO file). Generate from the existing SVG/PNG icon before running pack:win.
