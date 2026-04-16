@@ -45,6 +45,7 @@ interface WorktreeStore {
   removeFolder: (id: string) => void
   renameFolder: (id: string, name: string) => void
   moveProjectToFolder: (projectId: string, folderId: string | null) => void
+  reloadProjectWorktrees: (projectId: string) => Promise<number>
   reorderSidebar: (fromIndex: number, toIndex: number) => void
   reorderProjectsInFolder: (folderId: string, fromIndex: number, toIndex: number) => void
   toConfig: () => CanopyConfig
@@ -268,6 +269,37 @@ export const useWorktreeStore = create<WorktreeStore>()(subscribeWithSelector((s
         w.id === worktreeId ? { ...w, flagged: !w.flagged } : w
       ),
     }))
+  },
+
+  reloadProjectWorktrees: async (projectId: string) => {
+    const project = get().projects.find(p => p.id === projectId)
+    if (!project) return 0
+
+    const gitWorktrees = await window.electronAPI.canopy.listWorktrees(project.path)
+    const existing = get().worktrees.filter(w => w.projectId === projectId)
+    const existingPaths = new Set(existing.map(w => w.worktreePath.replace(/\\/g, '/')))
+
+    const newWorktrees = gitWorktrees.filter(
+      gw => !existingPaths.has(gw.path.replace(/\\/g, '/'))
+    )
+
+    if (newWorktrees.length === 0) return 0
+
+    const color = project.color
+    const additions = newWorktrees.map(gw => ({
+      id: uuid(),
+      projectId,
+      name: gw.branch.includes('/') ? gw.branch.slice(gw.branch.lastIndexOf('/') + 1) : gw.branch,
+      worktreePath: gw.path,
+      branch: gw.branch,
+      color,
+      isMain: gw.isMain,
+      splitLayout: createTabGroup(),
+      createdAt: new Date().toISOString(),
+    } satisfies Worktree))
+
+    set(s => ({ worktrees: [...s.worktrees, ...additions] }))
+    return additions.length
   },
 
   updateNotification: (config) => {

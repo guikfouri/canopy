@@ -25,6 +25,7 @@ export function WorktreeList() {
   const renameFolder = useWorktreeStore((s) => s.renameFolder)
   const updateProjectColor = useWorktreeStore((s) => s.updateProjectColor)
   const updateFolderColor = useWorktreeStore((s) => s.updateFolderColor)
+  const reloadProjectWorktrees = useWorktreeStore((s) => s.reloadProjectWorktrees)
 
   // Color picker state
   const [colorPicker, setColorPicker] = useState<{ id: string; type: 'project' | 'folder'; color: string; rect: DOMRect } | null>(null)
@@ -321,6 +322,10 @@ export function WorktreeList() {
           y={projectContextMenu.y}
           onDismiss={() => setProjectContextMenu(null)}
           items={[
+            {
+              label: 'Reload worktrees',
+              onClick: () => { reloadProjectWorktrees(projectContextMenu.project.id); setProjectContextMenu(null) },
+            },
             {
               label: 'Remove project',
               danger: true,
