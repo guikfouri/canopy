@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import type { Tab } from '@shared/types'
 import { COLORS } from '../../lib/constants'
 
@@ -204,12 +204,13 @@ function TabItem({
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Focus input when editing starts
-  if (isEditing && inputRef.current) {
+  useEffect(() => {
+    if (!isEditing) return
     requestAnimationFrame(() => {
       inputRef.current?.focus()
       inputRef.current?.select()
     })
-  }
+  }, [isEditing])
 
   const icon = tab.type === 'terminal' ? (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
