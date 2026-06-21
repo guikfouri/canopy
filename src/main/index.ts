@@ -43,15 +43,36 @@ function createWindow(): void {
   }
 }
 
-// Register IPC handlers before window creation
-app.whenReady().then(() => {
-  registerIpcHandlers()
-  createWindow()
+// Isolate the dev userData dir from the installed app. Without this, a dev
+// build (`electron .`) and the production Canopy resolve to the same Chromium
+// userData and deadlock fighting over the shared LevelDB, freezing both.
+// Must run before the app is ready / any path is read.
+if (!app.isPackaged) {
+  app.setPath('userData', `${app.getPath('userData')}-dev`)
+}
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+// Enforce a single instance per userData dir. A second launch focuses the
+// existing window instead of attaching to the same userData and deadlocking.
+if (!app.requestSingleInstanceLock()) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    const win = BrowserWindow.getAllWindows()[0]
+    if (!win) return
+    if (win.isMinimized()) win.restore()
+    win.focus()
   })
-})
+
+  // Register IPC handlers before window creation
+  app.whenReady().then(() => {
+    registerIpcHandlers()
+    createWindow()
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
+  })
+}
 
 app.on('window-all-closed', () => {
   destroyAll()
