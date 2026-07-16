@@ -132,6 +132,14 @@ function buildShellEnv(
   return env
 }
 
+// A GUI app launched from Finder inherits no locale, so the PTY would start with
+// LANG unset. CLI tools that shell out to pbcopy then hand it UTF-8 bytes that it
+// encodes as Mac OS Roman ("ção" → "√ß√£o"). Terminal.app exports this itself.
+function resolveLang(): string {
+  const locale = app.getLocale().replace('-', '_')
+  return /^[a-z]{2}_[A-Z]{2}$/.test(locale) ? `${locale}.UTF-8` : 'en_US.UTF-8'
+}
+
 // ── Terminal instance management ─────────────────────────────────
 
 interface ManagedTerminal {
@@ -195,6 +203,7 @@ export async function createTerminal(payload: CreateTerminalPayload): Promise<vo
     COLORTERM: 'truecolor',
   }
   delete baseEnv.CLAUDECODE
+  if (!baseEnv.LC_ALL && !baseEnv.LANG) baseEnv.LANG = resolveLang()
 
   const env = disableIntegration ? baseEnv : buildShellEnv(shellType, baseEnv)
 
