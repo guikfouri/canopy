@@ -1,10 +1,21 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useWorktreeStore } from '../../stores/worktree-store'
-import { useTerminalStore } from '../../stores/terminal-store'
+import { useTerminalStore, collectTerminalIds } from '../../stores/terminal-store'
 import { COLORS } from '../../lib/constants'
 import { ContextMenu } from '../shared/ContextMenu'
 import { ColorPicker } from '../shared/ColorPicker'
 import type { Project, Worktree, CommandState, ProjectFolder } from '@shared/types'
+
+// Closing a tab kills its PTY (TabGroupContainer.handleCloseTab), but deleting a
+// worktree used to bypass that path entirely: the layout holding every terminalId
+// was dropped from the store while the processes kept running in the main process.
+// Long-lived shells (claude, dev servers) then survived with a cwd pointing at a
+// directory git had already removed, invisible and unkillable from the UI.
+function killWorktreeTerminals(worktree: Worktree) {
+  for (const terminalId of collectTerminalIds(worktree.splitLayout)) {
+    window.electronAPI.terminal.destroy(terminalId)
+  }
+}
 
 export function WorktreeList() {
   const projects = useWorktreeStore((s) => s.projects)
@@ -108,6 +119,7 @@ export function WorktreeList() {
 
     // Clean up non-main git worktrees on disk (fire-and-forget)
     for (const wt of projectWorktrees) {
+      killWorktreeTerminals(wt)
       if (!wt.isMain) {
         try {
           await window.electronAPI.canopy.removeWorktree(wt.worktreePath)
@@ -179,6 +191,11 @@ export function WorktreeList() {
   }
 
   const handleDeleteWorktree = async (worktree: Worktree, deleteBranch: boolean) => {
+    // Kill the PTYs first: the terminalIds only exist inside worktree.splitLayout,
+    // and removeWorktree drops that object. Skip this and the processes stay alive
+    // with no reference left in the UI to reach them — see killWorktreeTerminals.
+    killWorktreeTerminals(worktree)
+
     // Always remove from UI — git cleanup failure shouldn't block the user
     removeWorktree(worktree.id)
     setDeleteTarget(null)

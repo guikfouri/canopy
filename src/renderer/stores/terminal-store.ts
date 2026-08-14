@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { CommandState, SplitNode } from '@shared/types'
 
 // Find all terminalIds in a split layout tree
-function collectTerminalIds(node: SplitNode): string[] {
+export function collectTerminalIds(node: SplitNode): string[] {
   if (node.type === 'tab-group') {
     return node.tabs
       .filter(t => t.type === 'terminal' && t.terminalId)
